@@ -11,7 +11,7 @@ import {
   LockKeyhole,
   LogOut,
   Plus,
-  Seedling,
+  Sprout,
   ShieldCheck,
   Trash2,
   UserRound,
@@ -413,7 +413,7 @@ function Tracker({ data }: { data: DashboardData }) {
             label="Proteins"
             value={`${round(totals.proteins)}g`}
             helper={`Target ${round(data.selectedUser.targetProteins)}g`}
-            icon={Seedling}
+            icon={Sprout}
           />
           <StatCard
             label="Fats"

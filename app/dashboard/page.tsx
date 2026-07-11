@@ -34,32 +34,32 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const isAdmin = currentUser.role === "ADMIN";
 
   // 1. Get the return type of the Prisma query
-const allUsers = isAdmin
-  ? await prisma.user.findMany({
-      orderBy: [{ role: "asc" }, { name: "asc" }],
+const usersPayload = await prisma.user.findMany({
+  orderBy: [{ role: "asc" }, { name: "asc" }],
+  select: {
+    id: true,
+    email: true,
+    name: true,
+    role: true,
+    age: true,
+    gender: true,
+    conditions: true,
+    targetCarbs: true,
+    targetProteins: true,
+    targetFats: true,
+    targetCalories: true,
+    _count: {
       select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-        age: true,
-        gender: true,
-        conditions: true,
-        targetCarbs: true,
-        targetProteins: true,
-        targetFats: true,
-        targetCalories: true,
-        _count: {
-          select: {
-            foodLogs: true,
-            medicalRecords: true,
-          },
-        },
+        foodLogs: true,
+        medicalRecords: true,
       },
-    })
-  : [];
+    },
+  },
+});
 
-  type DashboardUser = typeof allUsers[number];
+  type DashboardUser = typeof usersPayload[number];
+
+  const allUsers: DashboardUser[] = isAdmin ? usersPayload : [];
 
   const targetUserId = isAdmin && params.userId ? params.userId : currentUser.id;
   const selectedUser =

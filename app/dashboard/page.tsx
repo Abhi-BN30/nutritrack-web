@@ -1,6 +1,5 @@
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { PrismaClient } from "@prisma/client";
 import { NutriTrackApp, type DashboardData } from "@/components/nutritrack-app";
 
 export const dynamic = "force-dynamic";
@@ -11,14 +10,9 @@ type DashboardPageProps = {
   }>;
 };
 
-  type DashboardUser = Parameters<typeof prisma.user.findMany>[0] extends { select: infer S }
-  ? Awaited<ReturnType<typeof prisma.user.findMany>>[number]
-  : never;
-
 function isoDate(date: Date) {
   return date.toISOString().slice(0, 10);
 }
-
 
 function displayDate(date: Date) {
   return new Intl.DateTimeFormat("en-IN", {
@@ -33,33 +27,30 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const params = await searchParams;
   const isAdmin = currentUser.role === "ADMIN";
 
-  // 1. Get the return type of the Prisma query
-const usersPayload = await prisma.user.findMany({
-  orderBy: [{ role: "asc" }, { name: "asc" }],
-  select: {
-    id: true,
-    email: true,
-    name: true,
-    role: true,
-    age: true,
-    gender: true,
-    conditions: true,
-    targetCarbs: true,
-    targetProteins: true,
-    targetFats: true,
-    targetCalories: true,
-    _count: {
-      select: {
-        foodLogs: true,
-        medicalRecords: true,
-      },
-    },
-  },
-});
-
-  type DashboardUser = typeof usersPayload[number];
-
-  const allUsers: DashboardUser[] = isAdmin ? usersPayload : [];
+  const allUsers = isAdmin
+    ? await prisma.user.findMany({
+        orderBy: [{ role: "asc" }, { name: "asc" }],
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          role: true,
+          age: true,
+          gender: true,
+          conditions: true,
+          targetCarbs: true,
+          targetProteins: true,
+          targetFats: true,
+          targetCalories: true,
+          _count: {
+            select: {
+              foodLogs: true,
+              medicalRecords: true,
+            },
+          },
+        },
+      })
+    : [];
 
   const targetUserId = isAdmin && params.userId ? params.userId : currentUser.id;
   const selectedUser =

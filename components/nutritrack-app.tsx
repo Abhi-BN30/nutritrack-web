@@ -692,12 +692,12 @@ function DatabaseTab({ data }: { data: DashboardData }) {
             <button className="h-10 rounded-md bg-[#245b35] px-4 text-sm font-semibold text-white">
               Save item
             </button>
-            <button
+            {/* <button
               formAction={seedMasterFoods}
               className="h-10 rounded-md border border-[#d8e2d5] px-4 text-sm font-semibold"
             >
               Seed defaults
-            </button>
+            </button> */}
           </div>
         </form>
       ) : null}

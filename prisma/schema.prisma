@@ -1,0 +1,83 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  PATIENT
+  ADMIN
+}
+
+model User {
+  id             String          @id @default(cuid())
+  email          String          @unique
+  pinHash        String
+  role           Role            @default(PATIENT)
+  name           String
+  age            Int?
+  gender         String?
+  conditions     String?
+  targetCarbs    Float           @default(80)
+  targetProteins Float           @default(60)
+  targetFats     Float           @default(150)
+  targetCalories Float           @default(2000)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  foodLogs       FoodLog[]
+  medicalRecords MedicalRecord[]
+
+  @@map("users")
+}
+
+model FoodItem {
+  id            String    @id @default(cuid())
+  itemName      String    @unique
+  carbohydrates Float
+  proteins      Float
+  fats          Float
+  calories      Float
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  foodLogs      FoodLog[]
+
+  @@map("food_items")
+}
+
+model MedicalRecord {
+  id        String   @id @default(cuid())
+  userId    String
+  date      DateTime @default(now())
+  weight    Float
+  height    Float
+  bmi       Float
+  bpLow     Float
+  bpHigh    Float
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, date])
+  @@map("medical_records")
+}
+
+model FoodLog {
+  id          String   @id @default(cuid())
+  userId      String
+  foodItemId  String
+  date        DateTime @default(now())
+  dishName    String
+  quantityGms Float
+  carbs       Float
+  proteins    Float
+  fats        Float
+  calories    Float
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  foodItem    FoodItem @relation(fields: [foodItemId], references: [id], onDelete: Restrict)
+
+  @@index([userId, date])
+  @@index([foodItemId])
+  @@map("food_logs")
+}

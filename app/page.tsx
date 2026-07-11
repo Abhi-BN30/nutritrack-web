@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { InstallAppButton } from "@/components/install-app-button";
 import { LoginForm } from "@/components/login-form";
 import { getSession } from "@/lib/session";
 
@@ -41,11 +42,25 @@ export default async function Home() {
                 </div>
               ))}
             </div>
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
+              <InstallAppButton />
+              <p className="text-sm text-[#6a7669]">
+                Install on Android, iPhone, tablet, or desktop from the browser.
+              </p>
+            </div>
           </div>
 
-          <p className="text-sm text-[#6a7669]">
-            Optimized for phones, tablets, desktop clinics, and Vercel deployment.
-          </p>
+          <div className="grid gap-3 text-sm text-[#6a7669] sm:grid-cols-3">
+            <div className="rounded-lg border border-[#dfe8dc] bg-white px-4 py-3">
+              Email + PIN only authentication
+            </div>
+            <div className="rounded-lg border border-[#dfe8dc] bg-white px-4 py-3">
+              Responsive patient and admin workspace
+            </div>
+            <div className="rounded-lg border border-[#dfe8dc] bg-white px-4 py-3">
+              Optimized for Vercel + Neon deployment
+            </div>
+          </div>
         </div>
 
         <div className="flex items-center bg-[#e8f0e4] px-6 py-10 sm:px-10 lg:px-16">

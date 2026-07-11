@@ -1,6 +1,7 @@
 "use server";
 
 import bcrypt from "bcryptjs";
+import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -11,6 +12,7 @@ import {
   foodLogSchema,
   loginSchema,
   medicalRecordSchema,
+  pinUpdateSchema,
   profileSchema,
   userSchema,
 } from "@/lib/validation";
@@ -31,6 +33,17 @@ function startOfDay(date: Date) {
 
 function endOfDay(date: Date) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1);
+}
+
+function actionError(error: unknown, fallback: string): ActionState {
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    if (error.code === "P2002") {
+      return { message: "That record already exists. Please use a different value." };
+    }
+  }
+
+  console.error(error);
+  return { message: fallback };
 }
 
 async function resolveWritableUserId(requestedUserId: string | undefined) {
@@ -95,13 +108,18 @@ export async function createUser(_state: ActionState, formData: FormData): Promi
     return { message: "Check the user details and try again." };
   }
 
-  await prisma.user.create({
-    data: {
-      ...parsed.data,
-      pinHash: await bcrypt.hash(parsed.data.pin, 10),
-      pin: undefined,
-    },
-  });
+  try {
+    const { pin, ...rest } = parsed.data;
+
+    await prisma.user.create({
+      data: {
+        ...rest,
+        pinHash: await bcrypt.hash(pin, 10),
+      },
+    });
+  } catch (error) {
+    return actionError(error, "Unable to create the user right now.");
+  }
 
   revalidatePath("/dashboard");
   return { ok: true, message: "User created." };
@@ -116,7 +134,7 @@ export async function updateProfile(_state: ActionState, formData: FormData): Pr
 
   const parsed = profileSchema.safeParse({
     name: formValue(formData, "name"),
-    age: Number(formValue(formData, "age") || 0),
+    age: formValue(formData, "age"),
     gender: formValue(formData, "gender"),
     conditions: formValue(formData, "conditions"),
     targetCarbs: formValue(formData, "targetCarbs"),
@@ -129,13 +147,47 @@ export async function updateProfile(_state: ActionState, formData: FormData): Pr
     return { message: "Check profile targets and try again." };
   }
 
-  await prisma.user.update({
-    where: { id: targetUserId },
-    data: parsed.data,
-  });
+  try {
+    await prisma.user.update({
+      where: { id: targetUserId },
+      data: parsed.data,
+    });
+  } catch (error) {
+    return actionError(error, "Unable to save the profile right now.");
+  }
 
   revalidatePath("/dashboard");
   return { ok: true, message: "Profile saved." };
+}
+
+export async function updatePin(_state: ActionState, formData: FormData): Promise<ActionState> {
+  const actor = await requireUser();
+  const targetUserId =
+    actor.role === "ADMIN" && formValue(formData, "userId")
+      ? formValue(formData, "userId")
+      : actor.id;
+
+  const parsed = pinUpdateSchema.safeParse({
+    pin: formValue(formData, "pin"),
+  });
+
+  if (!parsed.success) {
+    return { message: "PIN must be exactly 4 digits." };
+  }
+
+  try {
+    await prisma.user.update({
+      where: { id: targetUserId },
+      data: {
+        pinHash: await bcrypt.hash(parsed.data.pin, 10),
+      },
+    });
+  } catch (error) {
+    return actionError(error, "Unable to update the PIN right now.");
+  }
+
+  revalidatePath("/dashboard");
+  return { ok: true, message: actor.role === "ADMIN" ? "PIN reset for the selected user." : "PIN updated." };
 }
 
 export async function saveFoodItem(_state: ActionState, formData: FormData): Promise<ActionState> {
@@ -157,12 +209,15 @@ export async function saveFoodItem(_state: ActionState, formData: FormData): Pro
     return { message: "Check food item nutrition values." };
   }
 
-  const id = formValue(formData, "id");
-  await prisma.foodItem.upsert({
-    where: { id: id || "__new_food_item__" },
-    create: parsed.data,
-    update: parsed.data,
-  });
+  try {
+    await prisma.foodItem.upsert({
+      where: { itemName: parsed.data.itemName },
+      create: parsed.data,
+      update: parsed.data,
+    });
+  } catch (error) {
+    return actionError(error, "Unable to save the food item right now.");
+  }
 
   revalidatePath("/dashboard");
   return { ok: true, message: "Food item saved." };
@@ -186,17 +241,23 @@ export async function seedMasterFoods(): Promise<ActionState> {
     ["Tofu", 6, 16, 6, 136],
     ["Capsicum", 5.2, 0, 0, 23.7],
     ["Lime", 9.5, 0, 0, 57],
+    ["Greek Yogurt", 3.6, 10, 0.4, 59],
+    ["Paneer", 3.4, 18.3, 20.8, 265],
   ] as const;
 
-  await Promise.all(
-    foods.map(([itemName, carbohydrates, proteins, fats, calories]) =>
-      prisma.foodItem.upsert({
-        where: { itemName },
-        update: { carbohydrates, proteins, fats, calories },
-        create: { itemName, carbohydrates, proteins, fats, calories },
-      }),
-    ),
-  );
+  try {
+    await Promise.all(
+      foods.map(([itemName, carbohydrates, proteins, fats, calories]) =>
+        prisma.foodItem.upsert({
+          where: { itemName },
+          update: { carbohydrates, proteins, fats, calories },
+          create: { itemName, carbohydrates, proteins, fats, calories },
+        }),
+      ),
+    );
+  } catch (error) {
+    return actionError(error, "Unable to seed the master food table right now.");
+  }
 
   revalidatePath("/dashboard");
   return { ok: true, message: "Master foods seeded." };
@@ -222,17 +283,21 @@ export async function saveMedicalRecord(
 
   const bmi = parsed.data.weight / Math.pow(parsed.data.height / 100, 2);
 
-  await prisma.medicalRecord.create({
-    data: {
-      userId,
-      date: startOfDay(parsed.data.date),
-      weight: parsed.data.weight,
-      height: parsed.data.height,
-      bmi,
-      bpLow: parsed.data.bpLow,
-      bpHigh: parsed.data.bpHigh,
-    },
-  });
+  try {
+    await prisma.medicalRecord.create({
+      data: {
+        userId,
+        date: startOfDay(parsed.data.date),
+        weight: parsed.data.weight,
+        height: parsed.data.height,
+        bmi,
+        bpLow: parsed.data.bpLow,
+        bpHigh: parsed.data.bpHigh,
+      },
+    });
+  } catch (error) {
+    return actionError(error, "Unable to save the medical record right now.");
+  }
 
   revalidatePath("/dashboard");
   return { ok: true, message: "Medical record saved." };
@@ -260,19 +325,23 @@ export async function saveFoodLog(_state: ActionState, formData: FormData): Prom
 
   const scale = parsed.data.quantityGms / 100;
 
-  await prisma.foodLog.create({
-    data: {
-      userId,
-      foodItemId: food.id,
-      date: startOfDay(parsed.data.date),
-      dishName: parsed.data.dishName,
-      quantityGms: parsed.data.quantityGms,
-      carbs: food.carbohydrates * scale,
-      proteins: food.proteins * scale,
-      fats: food.fats * scale,
-      calories: food.calories * scale,
-    },
-  });
+  try {
+    await prisma.foodLog.create({
+      data: {
+        userId,
+        foodItemId: food.id,
+        date: startOfDay(parsed.data.date),
+        dishName: parsed.data.dishName,
+        quantityGms: parsed.data.quantityGms,
+        carbs: food.carbohydrates * scale,
+        proteins: food.proteins * scale,
+        fats: food.fats * scale,
+        calories: food.calories * scale,
+      },
+    });
+  } catch (error) {
+    return actionError(error, "Unable to save the food log right now.");
+  }
 
   revalidatePath("/dashboard");
   return { ok: true, message: "Food intake logged." };

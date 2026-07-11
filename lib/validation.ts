@@ -1,5 +1,22 @@
 import { z } from "zod";
 
+const optionalText = z.preprocess((value) => {
+  if (typeof value !== "string") {
+    return value;
+  }
+
+  const trimmed = value.trim();
+  return trimmed === "" ? undefined : trimmed;
+}, z.string().min(1).optional());
+
+const optionalPositiveInt = z.preprocess((value) => {
+  if (value === "" || value === null || value === undefined) {
+    return undefined;
+  }
+
+  return value;
+}, z.coerce.number().int().positive().optional());
+
 export const pinSchema = z.string().regex(/^\d{4}$/, "PIN must be exactly 4 digits.");
 
 export const loginSchema = z.object({
@@ -12,20 +29,24 @@ export const userSchema = z.object({
   pin: pinSchema,
   role: z.enum(["PATIENT", "ADMIN"]).default("PATIENT"),
   name: z.string().min(2).trim(),
-  age: z.coerce.number().int().positive().optional().or(z.literal("").transform(() => undefined)),
-  gender: z.string().trim().optional(),
-  conditions: z.string().trim().optional(),
+  age: optionalPositiveInt,
+  gender: optionalText,
+  conditions: optionalText,
 });
 
 export const profileSchema = z.object({
   name: z.string().min(2).trim(),
-  age: z.coerce.number().int().positive().optional(),
-  gender: z.string().trim().optional(),
-  conditions: z.string().trim().optional(),
+  age: optionalPositiveInt,
+  gender: optionalText,
+  conditions: optionalText,
   targetCarbs: z.coerce.number().nonnegative(),
   targetProteins: z.coerce.number().nonnegative(),
   targetFats: z.coerce.number().nonnegative(),
   targetCalories: z.coerce.number().nonnegative(),
+});
+
+export const pinUpdateSchema = z.object({
+  pin: pinSchema,
 });
 
 export const foodItemSchema = z.object({

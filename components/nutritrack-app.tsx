@@ -8,6 +8,7 @@ import {
   Database,
   Download,
   HeartPulse,
+  LockKeyhole,
   LogOut,
   Plus,
   Seedling,
@@ -16,6 +17,7 @@ import {
   UserRound,
   Users,
 } from "lucide-react";
+import { InstallAppButton } from "@/components/install-app-button";
 import {
   createUser,
   deleteFoodLog,
@@ -25,6 +27,7 @@ import {
   saveMedicalRecord,
   seedMasterFoods,
   signOut,
+  updatePin,
   updateProfile,
   type ActionState,
 } from "@/lib/actions";
@@ -80,6 +83,39 @@ type MedicalRecord = {
   bpHigh: number;
 };
 
+type SelectedSummary = {
+  totalFoodLogs: number;
+  totalMedicalRecords: number;
+  totalCalories: number;
+  totalCarbs: number;
+  totalProteins: number;
+  totalFats: number;
+  latestMedical: {
+    date: string;
+    bmi: number;
+    bpLow: number;
+    bpHigh: number;
+    weight: number;
+    height: number;
+  } | null;
+};
+
+type ComparisonRow = {
+  userId: string;
+  name: string;
+  email: string;
+  role: Role;
+  totalLogs: number;
+  avgCaloriesPerLog: number;
+  avgCarbsPerLog: number;
+  avgProteinsPerLog: number;
+  avgFatsPerLog: number;
+  latestBmi: number | null;
+  latestBpLow: number | null;
+  latestBpHigh: number | null;
+  latestMedicalDate: string | null;
+};
+
 export type DashboardData = {
   currentUser: Pick<UserSummary, "id" | "email" | "name" | "role">;
   selectedUser: UserSummary;
@@ -87,6 +123,7 @@ export type DashboardData = {
   foodItems: FoodItem[];
   foodLogs: FoodLog[];
   medicalRecords: MedicalRecord[];
+  selectedSummary: SelectedSummary;
   adminMetrics: {
     totalPatients: number;
     totalAdmins: number;
@@ -96,6 +133,7 @@ export type DashboardData = {
     avgBmi: number;
     highBpCount: number;
   } | null;
+  comparisonRows: ComparisonRow[];
 };
 
 type Tab = "tracker" | "medical" | "graphs" | "database" | "profile" | "admin";
@@ -111,11 +149,11 @@ function sum(logs: FoodLog[], key: "carbs" | "proteins" | "fats" | "calories") {
   return logs.reduce((total, log) => total + log[key], 0);
 }
 
-function downloadCsv(filename: string, rows: (string | number)[][]) {
+function downloadCsv(filename: string, rows: (string | number | null)[][]) {
   const csv = rows
     .map((row) =>
       row
-        .map((cell) => `"${String(cell).replaceAll('"', '""')}"`)
+        .map((cell) => `"${String(cell ?? "").replaceAll('"', '""')}"`)
         .join(","),
     )
     .join("\n");
@@ -135,6 +173,7 @@ function Field({
   type = "text",
   required = false,
   step,
+  placeholder,
 }: {
   name: string;
   label: string;
@@ -142,6 +181,7 @@ function Field({
   type?: string;
   required?: boolean;
   step?: string;
+  placeholder?: string;
 }) {
   return (
     <label className="block">
@@ -154,9 +194,19 @@ function Field({
         required={required}
         step={step}
         defaultValue={defaultValue ?? ""}
+        placeholder={placeholder}
         className="h-10 w-full rounded-md border border-[#d8e2d5] bg-white px-3 text-sm outline-none focus:border-[#245b35]"
       />
     </label>
+  );
+}
+
+function InfoChip({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-[#e4ece1] bg-[#f8fbf7] px-3 py-2">
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-[#6a7669]">{label}</p>
+      <p className="mt-1 text-sm font-medium text-[#203120]">{value}</p>
+    </div>
   );
 }
 
@@ -255,7 +305,7 @@ function Shell({
                 <button
                   key={item.id}
                   onClick={() => setTab(item.id)}
-                  className={`flex h-10 items-center gap-2 rounded-md px-3 text-sm font-medium ${
+                  className={`flex h-10 items-center gap-2 rounded-md px-3 text-sm font-medium whitespace-nowrap ${
                     tab === item.id
                       ? "bg-[#245b35] text-white"
                       : "text-[#4d5b4c] hover:bg-[#edf3ea]"
@@ -267,28 +317,49 @@ function Shell({
               ))}
           </nav>
 
-          <form action={signOut}>
-            <button className="flex h-10 items-center gap-2 rounded-md border border-[#d8e2d5] px-3 text-sm font-medium hover:bg-[#edf3ea]">
-              <LogOut className="size-4" />
-              Sign out
-            </button>
-          </form>
+          <div className="flex flex-wrap items-center gap-2">
+            <InstallAppButton compactLabel="Install" />
+            <form action={signOut}>
+              <button className="flex h-10 items-center gap-2 rounded-md border border-[#d8e2d5] px-3 text-sm font-medium hover:bg-[#edf3ea]">
+                <LogOut className="size-4" />
+                Sign out
+              </button>
+            </form>
+          </div>
         </div>
       </header>
 
       <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6">
         <section className="mb-5 rounded-lg border border-[#dbe5d8] bg-white p-4">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#4f7f5d]">
-                Viewing
-              </p>
-              <h1 className="mt-1 text-2xl font-semibold">{data.selectedUser.name}</h1>
-              <p className="text-sm text-[#6a7669]">{data.selectedUser.email}</p>
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+            <div className="space-y-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#4f7f5d]">
+                  Viewing
+                </p>
+                <h1 className="mt-1 text-2xl font-semibold">{data.selectedUser.name}</h1>
+                <p className="text-sm text-[#6a7669]">{data.selectedUser.email}</p>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                <InfoChip label="Role" value={data.selectedUser.role} />
+                <InfoChip label="Food logs" value={`${data.selectedSummary.totalFoodLogs}`} />
+                <InfoChip
+                  label="Medical updates"
+                  value={`${data.selectedSummary.totalMedicalRecords}`}
+                />
+                <InfoChip
+                  label="Latest BMI"
+                  value={
+                    data.selectedSummary.latestMedical
+                      ? round(data.selectedSummary.latestMedical.bmi)
+                      : "Not available"
+                  }
+                />
+              </div>
             </div>
 
             {data.currentUser.role === "ADMIN" ? (
-              <div className="flex flex-wrap gap-2">
+              <div className="flex max-w-full flex-wrap gap-2">
                 {data.users.map((user) => (
                   <a
                     key={user.id}
@@ -405,7 +476,7 @@ function Tracker({ data }: { data: DashboardData }) {
                   <p className="text-sm text-[#6a7669]">
                     {log.displayDate} - {log.foodItem} - {round(log.quantityGms, 0)}g
                   </p>
-                  <div className="mt-3 grid grid-cols-4 gap-2 text-xs">
+                  <div className="mt-3 grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
                     <span>{round(log.carbs)}g carbs</span>
                     <span>{round(log.proteins)}g protein</span>
                     <span>{round(log.fats)}g fats</span>
@@ -489,7 +560,10 @@ function Medical({ data }: { data: DashboardData }) {
 
 function Graphs({ data }: { data: DashboardData }) {
   const dailyTotals = useMemo(() => {
-    const map = new Map<string, { date: string; calories: number; carbs: number; proteins: number; fats: number }>();
+    const map = new Map<
+      string,
+      { date: string; calories: number; carbs: number; proteins: number; fats: number }
+    >();
     data.foodLogs.forEach((log) => {
       const existing = map.get(log.displayDate) ?? {
         date: log.displayDate,
@@ -536,9 +610,7 @@ function Graphs({ data }: { data: DashboardData }) {
       <section className="space-y-4">
         <StatCard
           label="Latest BMI"
-          value={
-            data.medicalRecords[0] ? round(data.medicalRecords[0].bmi) : "0.0"
-          }
+          value={data.medicalRecords[0] ? round(data.medicalRecords[0].bmi) : "0.0"}
           helper="From newest medical record"
           icon={HeartPulse}
         />
@@ -560,7 +632,10 @@ function Graphs({ data }: { data: DashboardData }) {
                 <span>Calories</span>
                 <span>{round(sum(data.foodLogs, "calories"), 0)}</span>
               </div>
-              <ProgressBar value={sum(data.foodLogs, "calories")} target={data.selectedUser.targetCalories} />
+              <ProgressBar
+                value={sum(data.foodLogs, "calories")}
+                target={data.selectedUser.targetCalories}
+              />
             </div>
             <div>
               <div className="mb-1 flex justify-between">
@@ -568,6 +643,23 @@ function Graphs({ data }: { data: DashboardData }) {
                 <span>{round(sum(data.foodLogs, "carbs"))}g</span>
               </div>
               <ProgressBar value={sum(data.foodLogs, "carbs")} target={data.selectedUser.targetCarbs} />
+            </div>
+            <div>
+              <div className="mb-1 flex justify-between">
+                <span>Proteins</span>
+                <span>{round(sum(data.foodLogs, "proteins"))}g</span>
+              </div>
+              <ProgressBar
+                value={sum(data.foodLogs, "proteins")}
+                target={data.selectedUser.targetProteins}
+              />
+            </div>
+            <div>
+              <div className="mb-1 flex justify-between">
+                <span>Fats</span>
+                <span>{round(sum(data.foodLogs, "fats"))}g</span>
+              </div>
+              <ProgressBar value={sum(data.foodLogs, "fats")} target={data.selectedUser.targetFats} />
             </div>
           </div>
         </div>
@@ -664,76 +756,144 @@ function DatabaseTab({ data }: { data: DashboardData }) {
 }
 
 function Profile({ data }: { data: DashboardData }) {
-  const [state, action] = useActionState(updateProfile, initialState);
+  const [profileState, profileAction] = useActionState(updateProfile, initialState);
+  const [pinState, pinAction] = useActionState(updatePin, initialState);
 
   return (
     <div className="grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
-      <form action={action} className="rounded-lg border border-[#dbe5d8] bg-white p-4">
-        <input type="hidden" name="userId" value={data.selectedUser.id} />
-        <h2 className="font-semibold">Profile and targets</h2>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <Field name="name" label="Name" defaultValue={data.selectedUser.name} required />
-          <Field name="age" label="Age" type="number" defaultValue={data.selectedUser.age} />
-          <Field name="gender" label="Gender" defaultValue={data.selectedUser.gender} />
-          <Field name="conditions" label="Conditions" defaultValue={data.selectedUser.conditions} />
-          <Field name="targetCarbs" label="Target carbs" type="number" step="0.1" defaultValue={data.selectedUser.targetCarbs} required />
-          <Field name="targetProteins" label="Target proteins" type="number" step="0.1" defaultValue={data.selectedUser.targetProteins} required />
-          <Field name="targetFats" label="Target fats" type="number" step="0.1" defaultValue={data.selectedUser.targetFats} required />
-          <Field name="targetCalories" label="Target calories" type="number" step="0.1" defaultValue={data.selectedUser.targetCalories} required />
-        </div>
-        <div className="mt-4">
-          <ActionMessage state={state} />
-        </div>
-        <button className="mt-4 h-10 rounded-md bg-[#245b35] px-4 text-sm font-semibold text-white">
-          Save profile
-        </button>
-      </form>
+      <div className="space-y-5">
+        <form action={profileAction} className="rounded-lg border border-[#dbe5d8] bg-white p-4">
+          <input type="hidden" name="userId" value={data.selectedUser.id} />
+          <h2 className="font-semibold">Profile and targets</h2>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <Field name="name" label="Name" defaultValue={data.selectedUser.name} required />
+            <Field name="age" label="Age" type="number" defaultValue={data.selectedUser.age} />
+            <Field name="gender" label="Gender" defaultValue={data.selectedUser.gender} />
+            <Field name="conditions" label="Conditions" defaultValue={data.selectedUser.conditions} />
+            <Field
+              name="targetCarbs"
+              label="Target carbs"
+              type="number"
+              step="0.1"
+              defaultValue={data.selectedUser.targetCarbs}
+              required
+            />
+            <Field
+              name="targetProteins"
+              label="Target proteins"
+              type="number"
+              step="0.1"
+              defaultValue={data.selectedUser.targetProteins}
+              required
+            />
+            <Field
+              name="targetFats"
+              label="Target fats"
+              type="number"
+              step="0.1"
+              defaultValue={data.selectedUser.targetFats}
+              required
+            />
+            <Field
+              name="targetCalories"
+              label="Target calories"
+              type="number"
+              step="0.1"
+              defaultValue={data.selectedUser.targetCalories}
+              required
+            />
+          </div>
+          <div className="mt-4">
+            <ActionMessage state={profileState} />
+          </div>
+          <button className="mt-4 h-10 rounded-md bg-[#245b35] px-4 text-sm font-semibold text-white">
+            Save profile
+          </button>
+        </form>
 
-      <section className="rounded-lg border border-[#dbe5d8] bg-white p-4">
-        <h2 className="font-semibold">Exports</h2>
-        <p className="mt-1 text-sm text-[#6a7669]">Download patient-specific records as CSV.</p>
-        <div className="mt-4 flex flex-wrap gap-3">
-          <button
-            onClick={() =>
-              downloadCsv("nutritrack-food-logs.csv", [
-                ["Date", "Dish", "Food", "Quantity", "Carbs", "Proteins", "Fats", "Calories"],
-                ...data.foodLogs.map((log) => [
-                  log.displayDate,
-                  log.dishName,
-                  log.foodItem,
-                  log.quantityGms,
-                  log.carbs,
-                  log.proteins,
-                  log.fats,
-                  log.calories,
-                ]),
-              ])
-            }
-            className="flex h-10 items-center gap-2 rounded-md border border-[#d8e2d5] px-4 text-sm font-semibold"
-          >
-            <Download className="size-4" />
-            Daily logs
+        <form action={pinAction} className="rounded-lg border border-[#dbe5d8] bg-white p-4">
+          <input type="hidden" name="userId" value={data.selectedUser.id} />
+          <div className="flex items-center gap-2">
+            <LockKeyhole className="size-4 text-[#4f7f5d]" />
+            <h2 className="font-semibold">
+              {data.currentUser.role === "ADMIN" ? "Reset selected user PIN" : "Change PIN"}
+            </h2>
+          </div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <Field
+              name="pin"
+              label="New 4 digit PIN"
+              type="password"
+              required
+              placeholder="1234"
+            />
+          </div>
+          <div className="mt-4">
+            <ActionMessage state={pinState} />
+          </div>
+          <button className="mt-4 h-10 rounded-md border border-[#d8e2d5] px-4 text-sm font-semibold">
+            Save PIN
           </button>
-          <button
-            onClick={() =>
-              downloadCsv("nutritrack-medical-records.csv", [
-                ["Date", "Weight", "Height", "BMI", "BP Low", "BP High"],
-                ...data.medicalRecords.map((record) => [
-                  record.displayDate,
-                  record.weight,
-                  record.height,
-                  record.bmi,
-                  record.bpLow,
-                  record.bpHigh,
-                ]),
-              ])
-            }
-            className="flex h-10 items-center gap-2 rounded-md border border-[#d8e2d5] px-4 text-sm font-semibold"
-          >
-            <Download className="size-4" />
-            Medical data
-          </button>
+        </form>
+      </div>
+
+      <section className="space-y-5">
+        <div className="rounded-lg border border-[#dbe5d8] bg-white p-4">
+          <h2 className="font-semibold">Account details</h2>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <InfoChip label="Email" value={data.selectedUser.email} />
+            <InfoChip label="Role" value={data.selectedUser.role} />
+            <InfoChip label="Food logs" value={`${data.selectedSummary.totalFoodLogs}`} />
+            <InfoChip label="Medical records" value={`${data.selectedSummary.totalMedicalRecords}`} />
+          </div>
         </div>
+
+        <section className="rounded-lg border border-[#dbe5d8] bg-white p-4">
+          <h2 className="font-semibold">Exports</h2>
+          <p className="mt-1 text-sm text-[#6a7669]">Download patient-specific records as CSV.</p>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <button
+              onClick={() =>
+                downloadCsv("nutritrack-food-logs.csv", [
+                  ["Date", "Dish", "Food", "Quantity", "Carbs", "Proteins", "Fats", "Calories"],
+                  ...data.foodLogs.map((log) => [
+                    log.displayDate,
+                    log.dishName,
+                    log.foodItem,
+                    log.quantityGms,
+                    log.carbs,
+                    log.proteins,
+                    log.fats,
+                    log.calories,
+                  ]),
+                ])
+              }
+              className="flex h-10 items-center gap-2 rounded-md border border-[#d8e2d5] px-4 text-sm font-semibold"
+            >
+              <Download className="size-4" />
+              Daily logs
+            </button>
+            <button
+              onClick={() =>
+                downloadCsv("nutritrack-medical-records.csv", [
+                  ["Date", "Weight", "Height", "BMI", "BP Low", "BP High"],
+                  ...data.medicalRecords.map((record) => [
+                    record.displayDate,
+                    record.weight,
+                    record.height,
+                    record.bmi,
+                    record.bpLow,
+                    record.bpHigh,
+                  ]),
+                ])
+              }
+              className="flex h-10 items-center gap-2 rounded-md border border-[#d8e2d5] px-4 text-sm font-semibold"
+            >
+              <Download className="size-4" />
+              Medical data
+            </button>
+          </div>
+        </section>
       </section>
     </div>
   );
@@ -747,12 +907,12 @@ function Admin({ data }: { data: DashboardData }) {
   }
 
   return (
-    <div className="grid gap-5 xl:grid-cols-[1fr_1fr]">
+    <div className="grid gap-5 xl:grid-cols-[0.95fr_1.05fr]">
       <section className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
           <StatCard label="Patients" value={`${data.adminMetrics.totalPatients}`} helper="Patient accounts" icon={Users} />
-          <StatCard label="Food logs" value={`${data.adminMetrics.totalFoodLogs}`} helper="Latest 500 loaded" icon={Apple} />
-          <StatCard label="Avg calories" value={round(data.adminMetrics.avgCalories, 0)} helper="Across loaded logs" icon={Activity} />
+          <StatCard label="Food logs" value={`${data.adminMetrics.totalFoodLogs}`} helper="Latest loaded records" icon={Apple} />
+          <StatCard label="Avg calories" value={round(data.adminMetrics.avgCalories, 0)} helper="Average per log" icon={Activity} />
           <StatCard label="High BP records" value={`${data.adminMetrics.highBpCount}`} helper=">= 130/80" icon={HeartPulse} />
         </div>
 
@@ -784,28 +944,115 @@ function Admin({ data }: { data: DashboardData }) {
         </form>
       </section>
 
-      <section className="rounded-lg border border-[#dbe5d8] bg-white">
-        <div className="border-b border-[#e4ece1] p-4">
-          <h2 className="font-semibold">All users</h2>
-          <p className="text-sm text-[#6a7669]">Open a user from the top selector to view details.</p>
-        </div>
-        <div className="divide-y divide-[#eef3ec]">
-          {data.users.map((user) => (
-            <a
-              key={user.id}
-              href={`/dashboard?userId=${user.id}`}
-              className="grid gap-2 p-4 hover:bg-[#f7faf5] sm:grid-cols-[1fr_auto]"
+      <section className="space-y-5">
+        <section className="rounded-lg border border-[#dbe5d8] bg-white">
+          <div className="border-b border-[#e4ece1] p-4">
+            <h2 className="font-semibold">All users</h2>
+            <p className="text-sm text-[#6a7669]">Open a user from the selector to view all their details.</p>
+          </div>
+          <div className="divide-y divide-[#eef3ec]">
+            {data.users.map((user) => (
+              <a
+                key={user.id}
+                href={`/dashboard?userId=${user.id}`}
+                className="grid gap-2 p-4 hover:bg-[#f7faf5] sm:grid-cols-[1fr_auto]"
+              >
+                <div>
+                  <p className="font-medium">{user.name}</p>
+                  <p className="text-sm text-[#6a7669]">{user.email}</p>
+                </div>
+                <p className="text-sm text-[#6a7669]">
+                  {user.role} - {user.foodLogs ?? 0} logs - {user.medicalRecords ?? 0} medical
+                </p>
+              </a>
+            ))}
+          </div>
+        </section>
+
+        <section className="rounded-lg border border-[#dbe5d8] bg-white">
+          <div className="flex items-center justify-between border-b border-[#e4ece1] p-4">
+            <div>
+              <h2 className="font-semibold">Cross-patient comparison</h2>
+              <p className="text-sm text-[#6a7669]">Compare activity, nutrition averages, and latest biometrics.</p>
+            </div>
+            <button
+              onClick={() =>
+                downloadCsv("nutritrack-admin-comparison.csv", [
+                  [
+                    "Name",
+                    "Email",
+                    "Role",
+                    "Total Logs",
+                    "Avg Calories/Log",
+                    "Avg Carbs/Log",
+                    "Avg Proteins/Log",
+                    "Avg Fats/Log",
+                    "Latest BMI",
+                    "Latest BP Low",
+                    "Latest BP High",
+                    "Latest Medical Date",
+                  ],
+                  ...data.comparisonRows.map((row) => [
+                    row.name,
+                    row.email,
+                    row.role,
+                    row.totalLogs,
+                    row.avgCaloriesPerLog,
+                    row.avgCarbsPerLog,
+                    row.avgProteinsPerLog,
+                    row.avgFatsPerLog,
+                    row.latestBmi,
+                    row.latestBpLow,
+                    row.latestBpHigh,
+                    row.latestMedicalDate,
+                  ]),
+                ])
+              }
+              className="rounded-md border border-[#d8e2d5] p-2"
             >
-              <div>
-                <p className="font-medium">{user.name}</p>
-                <p className="text-sm text-[#6a7669]">{user.email}</p>
-              </div>
-              <p className="text-sm text-[#6a7669]">
-                {user.role} - {user.foodLogs ?? 0} logs - {user.medicalRecords ?? 0} medical
-              </p>
-            </a>
-          ))}
-        </div>
+              <Download className="size-4" />
+            </button>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[920px] text-sm">
+              <thead className="bg-[#f4f8f2] text-left">
+                <tr>
+                  <th className="p-3">User</th>
+                  <th className="p-3">Logs</th>
+                  <th className="p-3">Avg kcal</th>
+                  <th className="p-3">Avg carbs</th>
+                  <th className="p-3">Avg proteins</th>
+                  <th className="p-3">Avg fats</th>
+                  <th className="p-3">Latest BMI</th>
+                  <th className="p-3">Latest BP</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.comparisonRows.map((row) => (
+                  <tr key={row.userId} className="border-t border-[#eef3ec]">
+                    <td className="p-3">
+                      <a href={`/dashboard?userId=${row.userId}`} className="font-medium text-[#245b35]">
+                        {row.name}
+                      </a>
+                      <p className="text-xs text-[#6a7669]">{row.email}</p>
+                    </td>
+                    <td className="p-3">{row.totalLogs}</td>
+                    <td className="p-3">{round(row.avgCaloriesPerLog, 0)}</td>
+                    <td className="p-3">{round(row.avgCarbsPerLog)}g</td>
+                    <td className="p-3">{round(row.avgProteinsPerLog)}g</td>
+                    <td className="p-3">{round(row.avgFatsPerLog)}g</td>
+                    <td className="p-3">{row.latestBmi ? round(row.latestBmi) : "-"}</td>
+                    <td className="p-3">
+                      {row.latestBpHigh && row.latestBpLow
+                        ? `${round(row.latestBpHigh, 0)}/${round(row.latestBpLow, 0)}`
+                        : "-"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
       </section>
     </div>
   );

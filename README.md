@@ -1,36 +1,159 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# NutriTrack Web
 
-## Getting Started
+NutriTrack is now structured as a **Next.js + Neon + Vercel** installable web app with two roles:
 
-First, run the development server:
+- **Patient**: logs food intake, stores dated medical updates, exports own data, updates profile targets, signs in with email + 4 digit PIN.
+- **Admin**: can create users, view every patient, compare cross-patient metrics, manage the master food table, reset PINs, and export analytics.
 
+## What is already implemented in this repo
+
+- Next.js App Router structure for Vercel deployment
+- Prisma schema for a centralized PostgreSQL / Neon database
+- JWT cookie session auth with **email + 4 digit PIN**
+- `PATIENT` and `ADMIN` roles
+- Master food table shared across all users
+- Dated medical records table linked to users
+- Food log table linked to users and master food items
+- Responsive dashboard UI for mobile, tablet, and desktop
+- PWA manifest + service worker so it can be installed as an app
+
+## Database design
+
+### 1. `users`
+Stores login and profile data.
+
+### 2. `food_items`
+Master table with per-100g nutrition values:
+- `itemName`
+- `carbohydrates`
+- `proteins`
+- `fats`
+- `calories`
+
+### 3. `medical_records`
+Stores historical medical data for a user. Every update creates a **new row**.
+- `weight`
+- `height`
+- `bmi`
+- `bpLow`
+- `bpHigh`
+- `date`
+
+### 4. `food_logs`
+Stores daily intake rows for a user.
+- `dishName`
+- `quantityGms`
+- calculated nutrition snapshot
+- linked `foodItemId`
+- linked `userId`
+
+## Local setup
+
+### 1. Install dependencies
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Create your environment file
+Copy `.env.example` to `.env` and fill in real values.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Required variables:
+```env
+DATABASE_URL="your-neon-connection-string"
+AUTH_SECRET="a-long-random-secret"
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Optional seed values:
+```env
+SEED_ADMIN_EMAIL="admin@nutritrack.app"
+SEED_ADMIN_PIN="1234"
+SEED_ADMIN_NAME="Primary Admin"
+SEED_PATIENT_EMAIL="patient@nutritrack.app"
+SEED_PATIENT_PIN="1234"
+SEED_PATIENT_NAME="Sample Patient"
+```
 
-## Learn More
+### 3. Push the schema to Neon
+```bash
+npm run db:push
+```
 
-To learn more about Next.js, take a look at the following resources:
+If you prefer migrations instead of direct push:
+```bash
+npm run db:migrate -- --name init
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 4. Seed master foods and starter users
+```bash
+npm run db:seed
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### 5. Start locally
+```bash
+npm run dev
+```
 
-## Deploy on Vercel
+## Neon database setup
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Recommended approach
+1. Create a new project in Neon.
+2. Copy the **pooled PostgreSQL connection string**.
+3. Paste it into `.env` as `DATABASE_URL`.
+4. Run:
+   - `npm run db:push`
+   - `npm run db:seed`
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Manual SQL alternative
+If you want to inspect or manually create the schema in Neon SQL Editor, use:
+- `docs/neon-manual-schema.sql`
+
+But the preferred approach is still Prisma.
+
+## Vercel deployment
+
+### Environment variables in Vercel
+Add these project environment variables in Vercel:
+- `DATABASE_URL`
+- `AUTH_SECRET`
+- `SEED_ADMIN_EMAIL` (optional)
+- `SEED_ADMIN_PIN` (optional)
+- `SEED_ADMIN_NAME` (optional)
+- `SEED_PATIENT_EMAIL` (optional)
+- `SEED_PATIENT_PIN` (optional)
+- `SEED_PATIENT_NAME` (optional)
+
+### Deploy flow
+1. Push this repo to GitHub.
+2. Import the repo into Vercel.
+3. Add the environment variables above.
+4. Deploy.
+5. Run Prisma schema push once from your machine against the same Neon DB:
+   ```bash
+   npm run db:push
+   npm run db:seed
+   ```
+
+## Important files
+
+- `app/page.tsx` - landing/login screen
+- `app/dashboard/page.tsx` - loads dashboard data and admin comparison metrics
+- `components/nutritrack-app.tsx` - main responsive patient/admin UI
+- `components/login-form.tsx` - email + PIN login form
+- `components/install-app-button.tsx` - browser install/PWA button
+- `lib/actions.ts` - server actions for login, users, foods, logs, records, PIN reset
+- `lib/session.ts` - JWT cookie session handling
+- `lib/auth.ts` - route protection helpers
+- `lib/validation.ts` - Zod validation schemas
+- `lib/prisma.ts` - Neon + Prisma client wiring
+- `prisma/schema.prisma` - centralized database schema
+- `prisma/seed.mjs` - starter seed for foods/admin/patient
+- `public/sw.js` - service worker for installable app support
+- `docs/neon-manual-schema.sql` - optional manual SQL
+
+## Notes
+
+- Do not commit the real `.env` file.
+- Change default seed PINs before production use.
+- Use a strong `AUTH_SECRET` in production.
+- The app is intentionally lightweight on authorization: only email + 4 digit PIN, with role-based dashboard access.
+

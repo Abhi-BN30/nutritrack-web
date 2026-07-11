@@ -24,3 +24,6 @@ All of this is per 100 grams of the items.
  
 
 7. Keeping the entire features of the app intact and the UI/UX of it, give me all the required steps and codes for each file needed telling what to do clearly. Make sure the website/application is compatible and responsive to all screen sizes
+
+DATABASE_URL="postgresql://neondb_owner:npg_mOg3zJUo5BYV@ep-ancient-firefly-at43oi7k-pooler.c-9.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+AUTH_SECRET = "c-K+5Hvie=H?tu_Q=D9/UQw!nU%wtrm_whH{K6*)dkd1%8E5Df!.&,]yPRe_mrC="

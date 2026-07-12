@@ -16,7 +16,22 @@ import {
   Trash2,
   UserRound,
   Users,
+  ChevronUp,
+  ChevronDown,
+  Search,
+  X,
 } from "lucide-react";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  ComposedChart,
+} from "recharts";
 import { InstallAppButton } from "@/components/install-app-button";
 import {
   createUser,
@@ -138,6 +153,11 @@ export type DashboardData = {
 
 type Tab = "tracker" | "medical" | "graphs" | "database" | "profile" | "admin";
 
+type SortConfig = {
+  key: string;
+  direction: "asc" | "desc";
+};
+
 const initialState: ActionState = {};
 const today = new Date().toISOString().slice(0, 10);
 
@@ -164,6 +184,76 @@ function downloadCsv(filename: string, rows: (string | number | null)[][]) {
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+// Reusable table components with search, sort, and filter
+function TableHeader<T>({
+  columns,
+  sortConfig,
+  onSort,
+}: {
+  columns: { key: string; label: string }[];
+  sortConfig: SortConfig | null;
+  onSort: (key: string) => void;
+}) {
+  return (
+    <thead className="bg-[#f4f8f2] text-left">
+      <tr>
+        {columns.map((col) => (
+          <th
+            key={col.key}
+            className="cursor-pointer p-3 hover:bg-[#e8f0e4]"
+            onClick={() => onSort(col.key)}
+          >
+            <div className="flex items-center gap-2">
+              {col.label}
+              {sortConfig?.key === col.key ? (
+                sortConfig.direction === "asc" ? (
+                  <ChevronUp className="size-4 text-[#4f7f5d]" />
+                ) : (
+                  <ChevronDown className="size-4 text-[#4f7f5d]" />
+                )
+              ) : (
+                <ChevronDown className="size-4 text-[#d8e2d5]" />
+              )}
+            </div>
+          </th>
+        ))}
+        <th className="p-3"></th>
+      </tr>
+    </thead>
+  );
+}
+
+function SearchAndFilter({
+  searchTerm,
+  onSearchChange,
+  placeholder = "Search...",
+}: {
+  searchTerm: string;
+  onSearchChange: (term: string) => void;
+  placeholder?: string;
+}) {
+  return (
+    <div className="relative">
+      <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#6a7669]" />
+      <input
+        type="text"
+        placeholder={placeholder}
+        value={searchTerm}
+        onChange={(e) => onSearchChange(e.target.value)}
+        className="h-10 w-full rounded-md border border-[#d8e2d5] bg-white pl-10 pr-3 text-sm outline-none focus:border-[#245b35]"
+      />
+      {searchTerm && (
+        <button
+          onClick={() => onSearchChange("")}
+          className="absolute right-2 top-1/2 -translate-y-1/2 text-[#6a7669] hover:text-[#172117]"
+        >
+          <X className="size-4" />
+        </button>
+      )}
+    </div>
+  );
 }
 
 function Field({
@@ -331,50 +421,30 @@ function Shell({
 
       <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6">
         <section className="mb-5 rounded-lg border border-[#dbe5d8] bg-white p-4">
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-            <div className="space-y-3">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#4f7f5d]">
-                  Viewing
-                </p>
-                <h1 className="mt-1 text-2xl font-semibold">{data.selectedUser.name}</h1>
-                <p className="text-sm text-[#6a7669]">{data.selectedUser.email}</p>
-              </div>
-              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-                <InfoChip label="Role" value={data.selectedUser.role} />
-                <InfoChip label="Food logs" value={`${data.selectedSummary.totalFoodLogs}`} />
-                <InfoChip
-                  label="Medical updates"
-                  value={`${data.selectedSummary.totalMedicalRecords}`}
-                />
-                <InfoChip
-                  label="Latest BMI"
-                  value={
-                    data.selectedSummary.latestMedical
-                      ? round(data.selectedSummary.latestMedical.bmi)
-                      : "Not available"
-                  }
-                />
-              </div>
+          <div className="space-y-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#4f7f5d]">
+                Viewing
+              </p>
+              <h1 className="mt-1 text-2xl font-semibold">{data.selectedUser.name}</h1>
+              <p className="text-sm text-[#6a7669]">{data.selectedUser.email}</p>
             </div>
-
-            {data.currentUser.role === "ADMIN" ? (
-              <div className="flex max-w-full flex-wrap gap-2">
-                {data.users.map((user) => (
-                  <a
-                    key={user.id}
-                    href={`/dashboard?userId=${user.id}`}
-                    className={`rounded-md border px-3 py-2 text-sm ${
-                      user.id === data.selectedUser.id
-                        ? "border-[#245b35] bg-[#edf7ec] text-[#245b35]"
-                        : "border-[#d8e2d5] hover:bg-[#f4f7f2]"
-                    }`}
-                  >
-                    {user.name}
-                  </a>
-                ))}
-              </div>
-            ) : null}
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+              <InfoChip label="Role" value={data.selectedUser.role} />
+              <InfoChip label="Food logs" value={`${data.selectedSummary.totalFoodLogs}`} />
+              <InfoChip
+                label="Medical updates"
+                value={`${data.selectedSummary.totalMedicalRecords}`}
+              />
+              <InfoChip
+                label="Latest BMI"
+                value={
+                  data.selectedSummary.latestMedical
+                    ? round(data.selectedSummary.latestMedical.bmi)
+                    : "Not available"
+                }
+              />
+            </div>
           </div>
         </section>
 
@@ -386,50 +456,96 @@ function Shell({
 
 function Tracker({ data }: { data: DashboardData }) {
   const [state, action] = useActionState(saveFoodLog, initialState);
+  const [selectedDate, setSelectedDate] = useState(today);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortConfig, setSortConfig] = useState<SortConfig>({ key: "date", direction: "desc" });
+
+  // Filter logs by selected date
+  const selectedDateLogs = useMemo(
+    () => data.foodLogs.filter((log) => log.date === selectedDate),
+    [data.foodLogs, selectedDate]
+  );
+
+  // Filter and sort logs
+  const filteredAndSortedLogs = useMemo(() => {
+    let filtered = selectedDateLogs.filter(
+      (log) =>
+        log.dishName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        log.foodItem.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    filtered.sort((a, b) => {
+      const aVal = a[sortConfig.key as keyof FoodLog];
+      const bVal = b[sortConfig.key as keyof FoodLog];
+
+      if (typeof aVal === "number" && typeof bVal === "number") {
+        return sortConfig.direction === "asc" ? aVal - bVal : bVal - aVal;
+      }
+      if (typeof aVal === "string" && typeof bVal === "string") {
+        return sortConfig.direction === "asc"
+          ? aVal.localeCompare(bVal)
+          : bVal.localeCompare(aVal);
+      }
+      return 0;
+    });
+
+    return filtered;
+  }, [selectedDateLogs, searchTerm, sortConfig]);
+
   const totals = {
-    carbs: sum(data.foodLogs, "carbs"),
-    proteins: sum(data.foodLogs, "proteins"),
-    fats: sum(data.foodLogs, "fats"),
-    calories: sum(data.foodLogs, "calories"),
+    carbs: sum(filteredAndSortedLogs, "carbs"),
+    proteins: sum(filteredAndSortedLogs, "proteins"),
+    fats: sum(filteredAndSortedLogs, "fats"),
+    calories: sum(filteredAndSortedLogs, "calories"),
+  };
+
+  const handleSort = (key: string) => {
+    setSortConfig((prev) => ({
+      key,
+      direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc",
+    }));
   };
 
   return (
-    <div className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
-      <section className="space-y-4">
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-2">
-          <StatCard
-            label="Calories"
-            value={round(totals.calories, 0)}
-            helper={`Target ${round(data.selectedUser.targetCalories, 0)} kcal`}
-            icon={Activity}
-          />
-          <StatCard
-            label="Carbs"
-            value={`${round(totals.carbs)}g`}
-            helper={`Target ${round(data.selectedUser.targetCarbs)}g`}
-            icon={Apple}
-          />
-          <StatCard
-            label="Proteins"
-            value={`${round(totals.proteins)}g`}
-            helper={`Target ${round(data.selectedUser.targetProteins)}g`}
-            icon={Sprout}
-          />
-          <StatCard
-            label="Fats"
-            value={`${round(totals.fats)}g`}
-            helper={`Target ${round(data.selectedUser.targetFats)}g`}
-            icon={BarChart3}
-          />
-        </div>
+    <div className="space-y-5">
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <StatCard
+          label="Calories"
+          value={round(totals.calories, 0)}
+          helper={`Target ${round(data.selectedUser.targetCalories, 0)} kcal`}
+          icon={Activity}
+        />
+        <StatCard
+          label="Carbs"
+          value={`${round(totals.carbs)}g`}
+          helper={`Target ${round(data.selectedUser.targetCarbs)}g`}
+          icon={Apple}
+        />
+        <StatCard
+          label="Proteins"
+          value={`${round(totals.proteins)}g`}
+          helper={`Target ${round(data.selectedUser.targetProteins)}g`}
+          icon={Sprout}
+        />
+        <StatCard
+          label="Fats"
+          value={`${round(totals.fats)}g`}
+          helper={`Target ${round(data.selectedUser.targetFats)}g`}
+          icon={BarChart3}
+        />
+      </div>
 
+      {/* Main Content Grid */}
+      <div className="grid gap-5 lg:grid-cols-[1fr_1.2fr]">
+        {/* Form Section */}
         <form action={action} className="rounded-lg border border-[#dbe5d8] bg-white p-4">
           <input name="userId" type="hidden" value={data.selectedUser.id} />
           <div className="mb-4 flex items-center gap-2">
             <Plus className="size-4 text-[#4f7f5d]" />
             <h2 className="font-semibold">Log daily intake</h2>
           </div>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3">
             <label>
               <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[#6a7669]">
                 Food item
@@ -454,46 +570,84 @@ function Tracker({ data }: { data: DashboardData }) {
           <div className="mt-4">
             <ActionMessage state={state} />
           </div>
-          <button className="mt-4 h-10 rounded-md bg-[#245b35] px-4 text-sm font-semibold text-white">
+          <button className="mt-4 h-10 w-full rounded-md bg-[#245b35] px-4 text-sm font-semibold text-white">
             Add food log
           </button>
         </form>
-      </section>
 
-      <section className="rounded-lg border border-[#dbe5d8] bg-white">
-        <div className="border-b border-[#e4ece1] p-4">
-          <h2 className="font-semibold">Meals and ingredients eaten</h2>
-          <p className="text-sm text-[#6a7669]">Latest records for the selected patient.</p>
-        </div>
-        <div className="divide-y divide-[#eef3ec]">
-          {data.foodLogs.length === 0 ? (
-            <p className="p-5 text-sm text-[#6a7669]">No intake logs yet.</p>
-          ) : (
-            data.foodLogs.map((log) => (
-              <div key={log.id} className="grid gap-3 p-4 md:grid-cols-[1fr_auto]">
-                <div>
-                  <p className="font-medium">{log.dishName}</p>
-                  <p className="text-sm text-[#6a7669]">
-                    {log.displayDate} - {log.foodItem} - {round(log.quantityGms, 0)}g
-                  </p>
-                  <div className="mt-3 grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
-                    <span>{round(log.carbs)}g carbs</span>
-                    <span>{round(log.proteins)}g protein</span>
-                    <span>{round(log.fats)}g fats</span>
-                    <span>{round(log.calories, 0)} kcal</span>
-                  </div>
-                </div>
-                <form action={deleteFoodLog}>
-                  <input type="hidden" name="id" value={log.id} />
-                  <button className="rounded-md border border-[#ead0cb] p-2 text-[#a13f32]">
-                    <Trash2 className="size-4" />
-                  </button>
-                </form>
+        {/* Table Section */}
+        <section className="rounded-lg border border-[#dbe5d8] bg-white overflow-hidden flex flex-col">
+          <div className="border-b border-[#e4ece1] p-4">
+            <div className="mb-3 flex items-center gap-3">
+              <div>
+                <h2 className="font-semibold">Meals and ingredients</h2>
+                <p className="text-sm text-[#6a7669]">{selectedDateLogs.length} entries for {selectedDateLogs.length > 0 ? 'selected' : 'this'} date.</p>
               </div>
-            ))
-          )}
-        </div>
-      </section>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[#6a7669]">
+                  Select date
+                </label>
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="h-10 w-full rounded-md border border-[#d8e2d5] bg-white px-3 text-sm"
+                />
+              </div>
+              <SearchAndFilter
+                searchTerm={searchTerm}
+                onSearchChange={setSearchTerm}
+                placeholder="Search by dish or food..."
+              />
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-x-auto">
+            {filteredAndSortedLogs.length === 0 ? (
+              <p className="p-5 text-center text-sm text-[#6a7669]">No intake logs for this date.</p>
+            ) : (
+              <table className="w-full text-sm">
+                <TableHeader
+                  columns={[
+                    { key: "dishName", label: "Dish" },
+                    { key: "foodItem", label: "Food" },
+                    { key: "quantityGms", label: "Qty (g)" },
+                    { key: "carbs", label: "Carbs" },
+                    { key: "proteins", label: "Protein" },
+                    { key: "fats", label: "Fats" },
+                    { key: "calories", label: "Cal" },
+                  ]}
+                  sortConfig={sortConfig}
+                  onSort={handleSort}
+                />
+                <tbody>
+                  {filteredAndSortedLogs.map((log) => (
+                    <tr key={log.id} className="border-t border-[#eef3ec] hover:bg-[#f9fcf8]">
+                      <td className="p-2 sm:p-3 whitespace-nowrap">{log.dishName}</td>
+                      <td className="p-2 sm:p-3 whitespace-nowrap text-[#6a7669]">{log.foodItem}</td>
+                      <td className="p-2 sm:p-3 whitespace-nowrap text-right">{round(log.quantityGms, 0)}</td>
+                      <td className="p-2 sm:p-3 whitespace-nowrap text-right">{round(log.carbs)}</td>
+                      <td className="p-2 sm:p-3 whitespace-nowrap text-right">{round(log.proteins)}</td>
+                      <td className="p-2 sm:p-3 whitespace-nowrap text-right">{round(log.fats)}</td>
+                      <td className="p-2 sm:p-3 whitespace-nowrap text-right font-medium">{round(log.calories, 0)}</td>
+                      <td className="p-2 sm:p-3">
+                        <form action={deleteFoodLog}>
+                          <input type="hidden" name="id" value={log.id} />
+                          <button className="rounded-md border border-[#ead0cb] p-1.5 text-[#a13f32] hover:bg-[#fdf7f5]">
+                            <Trash2 className="size-3.5" />
+                          </button>
+                        </form>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </section>
+      </div>
     </div>
   );
 }
@@ -559,58 +713,356 @@ function Medical({ data }: { data: DashboardData }) {
 }
 
 function Graphs({ data }: { data: DashboardData }) {
+  const [startDate, setStartDate] = useState(() => {
+    // Default to 30 days ago
+    const date = new Date();
+    date.setDate(date.getDate() - 30);
+    return date.toISOString().slice(0, 10);
+  });
+  const [endDate, setEndDate] = useState(today);
+
   const dailyTotals = useMemo(() => {
     const map = new Map<
       string,
-      { date: string; calories: number; carbs: number; proteins: number; fats: number }
+      {
+        date: string;
+        displayDate: string;
+        calories: number;
+        carbs: number;
+        proteins: number;
+        fats: number;
+      }
     >();
     data.foodLogs.forEach((log) => {
-      const existing = map.get(log.displayDate) ?? {
-        date: log.displayDate,
-        calories: 0,
-        carbs: 0,
-        proteins: 0,
-        fats: 0,
-      };
-      existing.calories += log.calories;
-      existing.carbs += log.carbs;
-      existing.proteins += log.proteins;
-      existing.fats += log.fats;
-      map.set(log.displayDate, existing);
+      if (log.date >= startDate && log.date <= endDate) {
+        const existing = map.get(log.date) ?? {
+          date: log.date,
+          displayDate: log.displayDate,
+          calories: 0,
+          carbs: 0,
+          proteins: 0,
+          fats: 0,
+        };
+        existing.calories += log.calories;
+        existing.carbs += log.carbs;
+        existing.proteins += log.proteins;
+        existing.fats += log.fats;
+        map.set(log.date, existing);
+      }
     });
-    return Array.from(map.values()).reverse();
-  }, [data.foodLogs]);
+    return Array.from(map.values()).sort((a, b) => a.date.localeCompare(b.date));
+  }, [data.foodLogs, startDate, endDate]);
 
-  const maxCalories = Math.max(1, ...dailyTotals.map((item) => item.calories));
+  const dailyMedical = useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        date: string;
+        displayDate: string;
+        weight: number;
+        bmi: number;
+        bpLow: number;
+        bpHigh: number;
+      }
+    >();
+    data.medicalRecords.forEach((record) => {
+      if (record.date >= startDate && record.date <= endDate) {
+        map.set(record.date, {
+          date: record.date,
+          displayDate: record.displayDate,
+          weight: record.weight,
+          bmi: record.bmi,
+          bpLow: record.bpLow,
+          bpHigh: record.bpHigh,
+        });
+      }
+    });
+    return Array.from(map.values()).sort((a, b) => a.date.localeCompare(b.date));
+  }, [data.medicalRecords, startDate, endDate]);
+
+  const summaryStats = useMemo(() => {
+    if (dailyTotals.length === 0) {
+      return {
+        avgCalories: 0,
+        avgCarbs: 0,
+        avgProteins: 0,
+        avgFats: 0,
+        maxCalories: 0,
+      };
+    }
+    return {
+      avgCalories: dailyTotals.reduce((sum, d) => sum + d.calories, 0) / dailyTotals.length,
+      avgCarbs: dailyTotals.reduce((sum, d) => sum + d.carbs, 0) / dailyTotals.length,
+      avgProteins: dailyTotals.reduce((sum, d) => sum + d.proteins, 0) / dailyTotals.length,
+      avgFats: dailyTotals.reduce((sum, d) => sum + d.fats, 0) / dailyTotals.length,
+      maxCalories: Math.max(...dailyTotals.map((d) => d.calories)),
+    };
+  }, [dailyTotals]);
 
   return (
-    <div className="grid gap-5 lg:grid-cols-[1fr_0.85fr]">
+    <div className="grid gap-5">
+      {/* Date Range Picker */}
       <section className="rounded-lg border border-[#dbe5d8] bg-white p-4">
-        <h2 className="font-semibold">Nutrition trend</h2>
-        <div className="mt-5 space-y-4">
-          {dailyTotals.length === 0 ? (
-            <p className="text-sm text-[#6a7669]">Log food to build charts.</p>
-          ) : (
-            dailyTotals.map((item) => (
-              <div key={item.date} className="grid grid-cols-[86px_1fr_64px] items-center gap-3">
-                <span className="text-xs text-[#6a7669]">{item.date}</span>
-                <div className="h-8 rounded-md bg-[#edf3ea]">
-                  <div
-                    className="h-8 rounded-md bg-[#4f7f5d]"
-                    style={{ width: `${Math.max(4, (item.calories / maxCalories) * 100)}%` }}
-                  />
-                </div>
-                <span className="text-right text-sm font-medium">{round(item.calories, 0)}</span>
-              </div>
-            ))
-          )}
+        <h3 className="mb-3 font-semibold">Filter by date range</h3>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div>
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[#6a7669]">
+              Start date
+            </label>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              max={endDate}
+              className="h-10 w-full rounded-md border border-[#d8e2d5] bg-white px-3 text-sm"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[#6a7669]">
+              End date
+            </label>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              min={startDate}
+              className="h-10 w-full rounded-md border border-[#d8e2d5] bg-white px-3 text-sm"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[#6a7669]">
+              Days
+            </label>
+            <div className="h-10 rounded-md border border-[#d8e2d5] bg-[#f9fcf8] px-3 flex items-center text-sm font-medium">
+              {dailyTotals.length} days
+            </div>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[#6a7669]">
+              Quick presets
+            </label>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  const date = new Date();
+                  date.setDate(date.getDate() - 7);
+                  setStartDate(date.toISOString().slice(0, 10));
+                  setEndDate(today);
+                }}
+                className="flex-1 h-10 rounded-md border border-[#d8e2d5] text-xs font-medium hover:bg-[#f4f7f2]"
+              >
+                7 days
+              </button>
+              <button
+                onClick={() => {
+                  const date = new Date();
+                  date.setDate(date.getDate() - 30);
+                  setStartDate(date.toISOString().slice(0, 10));
+                  setEndDate(today);
+                }}
+                className="flex-1 h-10 rounded-md border border-[#d8e2d5] text-xs font-medium hover:bg-[#f4f7f2]"
+              >
+                30 days
+              </button>
+            </div>
+          </div>
         </div>
       </section>
 
-      <section className="space-y-4">
+      {/* Summary Stats */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <StatCard
+          label="Avg Daily Calories"
+          value={round(summaryStats.avgCalories, 0)}
+          helper={`From ${dailyTotals.length} days`}
+          icon={Activity}
+        />
+        <StatCard
+          label="Avg Daily Carbs"
+          value={`${round(summaryStats.avgCarbs)}g`}
+          helper={`From ${dailyTotals.length} days`}
+          icon={Apple}
+        />
+        <StatCard
+          label="Avg Daily Protein"
+          value={`${round(summaryStats.avgProteins)}g`}
+          helper={`From ${dailyTotals.length} days`}
+          icon={Sprout}
+        />
+        <StatCard
+          label="Avg Daily Fats"
+          value={`${round(summaryStats.avgFats)}g`}
+          helper={`From ${dailyTotals.length} days`}
+          icon={BarChart3}
+        />
+      </div>
+
+      {/* Nutrition Chart with Dual Axes */}
+      {dailyTotals.length === 0 ? (
+        <div className="rounded-lg border border-[#dbe5d8] bg-white p-8 text-center">
+          <p className="text-sm text-[#6a7669]">Log food to build charts and trends.</p>
+        </div>
+      ) : (
+        <section className="rounded-lg border border-[#dbe5d8] bg-white p-4">
+          <h3 className="mb-4 font-semibold">Daily Nutrition Intake (Dual Axis View)</h3>
+          <p className="mb-3 text-xs text-[#6a7669]">Left axis: Carbs, Proteins, Fats (grams) • Right axis: Calories (kcal)</p>
+          <ResponsiveContainer width="100%" height={400}>
+            <ComposedChart data={dailyTotals}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#dbe5d8" />
+              <XAxis
+                dataKey="displayDate"
+                tick={{ fontSize: 12 }}
+                stroke="#6a7669"
+              />
+              {/* Left Y Axis - Carbs, Proteins, Fats */}
+              <YAxis
+                yAxisId="left"
+                tick={{ fontSize: 12 }}
+                stroke="#6a7669"
+                label={{ value: "Grams (g)", angle: -90, position: "insideLeft" }}
+              />
+              {/* Right Y Axis - Calories */}
+              <YAxis
+                yAxisId="right"
+                orientation="right"
+                tick={{ fontSize: 12 }}
+                stroke="#4f7f5d"
+                label={{ value: "Calories (kcal)", angle: 90, position: "insideRight" }}
+              />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "#fff",
+                  border: "1px solid #dbe5d8",
+                  borderRadius: "0.5rem",
+                }}
+              />
+              <Legend />
+              {/* Carbs Line */}
+              <Line
+                yAxisId="left"
+                type="monotone"
+                dataKey="carbs"
+                stroke="#a89968"
+                strokeWidth={2.5}
+                dot={false}
+                name="Carbs (g)"
+              />
+              {/* Proteins Line */}
+              <Line
+                yAxisId="left"
+                type="monotone"
+                dataKey="proteins"
+                stroke="#6b5b4d"
+                strokeWidth={2.5}
+                dot={false}
+                name="Proteins (g)"
+              />
+              {/* Fats Line */}
+              <Line
+                yAxisId="left"
+                type="monotone"
+                dataKey="fats"
+                stroke="#d4a574"
+                strokeWidth={2.5}
+                dot={false}
+                name="Fats (g)"
+              />
+              {/* Calories Line - Right Axis */}
+              <Line
+                yAxisId="right"
+                type="monotone"
+                dataKey="calories"
+                stroke="#4f7f5d"
+                strokeWidth={3}
+                dot={false}
+                name="Calories (kcal)"
+              />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </section>
+      )}
+
+      {/* Medical Data Chart */}
+      {dailyMedical.length > 0 ? (
+        <section className="rounded-lg border border-[#dbe5d8] bg-white p-4">
+          <h3 className="mb-4 font-semibold">Biometric Trends</h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <ComposedChart data={dailyMedical}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#dbe5d8" />
+              <XAxis
+                dataKey="displayDate"
+                tick={{ fontSize: 12 }}
+                stroke="#6a7669"
+              />
+              {/* Left Y Axis - Weight & BMI */}
+              <YAxis
+                yAxisId="left"
+                tick={{ fontSize: 12 }}
+                stroke="#6a7669"
+                label={{ value: "Weight (kg) / BMI", angle: -90, position: "insideLeft" }}
+              />
+              {/* Right Y Axis - BP */}
+              <YAxis
+                yAxisId="right"
+                orientation="right"
+                tick={{ fontSize: 12 }}
+                stroke="#bf5a4c"
+                label={{ value: "Blood Pressure (mmHg)", angle: 90, position: "insideRight" }}
+              />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "#fff",
+                  border: "1px solid #dbe5d8",
+                  borderRadius: "0.5rem",
+                }}
+              />
+              <Legend />
+              <Line
+                yAxisId="left"
+                type="monotone"
+                dataKey="weight"
+                stroke="#4f7f5d"
+                strokeWidth={2.5}
+                dot={false}
+                name="Weight (kg)"
+              />
+              <Line
+                yAxisId="left"
+                type="monotone"
+                dataKey="bmi"
+                stroke="#8b7d52"
+                strokeWidth={2.5}
+                dot={false}
+                name="BMI"
+              />
+              <Line
+                yAxisId="right"
+                type="monotone"
+                dataKey="bpHigh"
+                stroke="#bf5a4c"
+                strokeWidth={2.5}
+                dot={false}
+                name="BP Systolic"
+              />
+              <Line
+                yAxisId="right"
+                type="monotone"
+                dataKey="bpLow"
+                stroke="#d4876b"
+                strokeWidth={2.5}
+                dot={false}
+                name="BP Diastolic"
+              />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </section>
+      ) : null}
+
+      {/* Latest Medical Data Tiles */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           label="Latest BMI"
-          value={data.medicalRecords[0] ? round(data.medicalRecords[0].bmi) : "0.0"}
+          value={data.medicalRecords[0] ? round(data.medicalRecords[0].bmi) : "—"}
           helper="From newest medical record"
           icon={HeartPulse}
         />
@@ -619,58 +1071,67 @@ function Graphs({ data }: { data: DashboardData }) {
           value={
             data.medicalRecords[0]
               ? `${round(data.medicalRecords[0].bpHigh, 0)}/${round(data.medicalRecords[0].bpLow, 0)}`
-              : "0/0"
+              : "—"
           }
           helper="Systolic / diastolic"
           icon={Activity}
         />
-        <div className="rounded-lg border border-[#dbe5d8] bg-white p-4">
-          <h3 className="font-semibold">Target progress</h3>
-          <div className="mt-4 space-y-3 text-sm">
-            <div>
-              <div className="mb-1 flex justify-between">
-                <span>Calories</span>
-                <span>{round(sum(data.foodLogs, "calories"), 0)}</span>
-              </div>
-              <ProgressBar
-                value={sum(data.foodLogs, "calories")}
-                target={data.selectedUser.targetCalories}
-              />
-            </div>
-            <div>
-              <div className="mb-1 flex justify-between">
-                <span>Carbs</span>
-                <span>{round(sum(data.foodLogs, "carbs"))}g</span>
-              </div>
-              <ProgressBar value={sum(data.foodLogs, "carbs")} target={data.selectedUser.targetCarbs} />
-            </div>
-            <div>
-              <div className="mb-1 flex justify-between">
-                <span>Proteins</span>
-                <span>{round(sum(data.foodLogs, "proteins"))}g</span>
-              </div>
-              <ProgressBar
-                value={sum(data.foodLogs, "proteins")}
-                target={data.selectedUser.targetProteins}
-              />
-            </div>
-            <div>
-              <div className="mb-1 flex justify-between">
-                <span>Fats</span>
-                <span>{round(sum(data.foodLogs, "fats"))}g</span>
-              </div>
-              <ProgressBar value={sum(data.foodLogs, "fats")} target={data.selectedUser.targetFats} />
-            </div>
-          </div>
-        </div>
-      </section>
+        <StatCard
+          label="Target Adherence"
+          value={
+            dailyTotals.length > 0
+              ? `${round((summaryStats.avgCalories / data.selectedUser.targetCalories) * 100)}%`
+              : "—"
+          }
+          helper="Avg vs target calories"
+          icon={Apple}
+        />
+        <StatCard
+          label="Weight"
+          value={data.medicalRecords[0] ? `${round(data.medicalRecords[0].weight)} kg` : "—"}
+          helper="Latest recorded weight"
+          icon={Sprout}
+        />
+      </div>
     </div>
   );
 }
 
 function DatabaseTab({ data }: { data: DashboardData }) {
   const [state, action] = useActionState(saveFoodItem, initialState);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortConfig, setSortConfig] = useState<SortConfig>({ key: "itemName", direction: "asc" });
   const canEdit = data.currentUser.role === "ADMIN";
+
+  const filteredAndSortedItems = useMemo(() => {
+    let filtered = data.foodItems.filter((item) =>
+      item.itemName.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    filtered.sort((a, b) => {
+      const aVal = a[sortConfig.key as keyof FoodItem];
+      const bVal = b[sortConfig.key as keyof FoodItem];
+
+      if (typeof aVal === "number" && typeof bVal === "number") {
+        return sortConfig.direction === "asc" ? aVal - bVal : bVal - aVal;
+      }
+      if (typeof aVal === "string" && typeof bVal === "string") {
+        return sortConfig.direction === "asc"
+          ? aVal.localeCompare(bVal)
+          : bVal.localeCompare(aVal);
+      }
+      return 0;
+    });
+
+    return filtered;
+  }, [data.foodItems, searchTerm, sortConfig]);
+
+  const handleSort = (key: string) => {
+    setSortConfig((prev) => ({
+      key,
+      direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc",
+    }));
+  };
 
   return (
     <div className="grid gap-5 lg:grid-cols-[0.8fr_1.2fr]">
@@ -692,12 +1153,6 @@ function DatabaseTab({ data }: { data: DashboardData }) {
             <button className="h-10 rounded-md bg-[#245b35] px-4 text-sm font-semibold text-white">
               Save item
             </button>
-            {/* <button
-              formAction={seedMasterFoods}
-              className="h-10 rounded-md border border-[#d8e2d5] px-4 text-sm font-semibold"
-            >
-              Seed defaults
-            </button> */}
           </div>
         </form>
       ) : null}
@@ -706,13 +1161,13 @@ function DatabaseTab({ data }: { data: DashboardData }) {
         <div className="flex items-center justify-between border-b border-[#e4ece1] p-4">
           <div>
             <h2 className="font-semibold">Food database</h2>
-            <p className="text-sm text-[#6a7669]">Centralized for every patient.</p>
+            <p className="text-sm text-[#6a7669]">Centralized for every patient. {filteredAndSortedItems.length} items</p>
           </div>
           <button
             onClick={() =>
               downloadCsv("nutritrack-food-master.csv", [
                 ["Item", "Carbohydrates", "Proteins", "Fats", "Calories"],
-                ...data.foodItems.map((item) => [
+                ...filteredAndSortedItems.map((item) => [
                   item.itemName,
                   item.carbohydrates,
                   item.proteins,
@@ -721,34 +1176,50 @@ function DatabaseTab({ data }: { data: DashboardData }) {
                 ]),
               ])
             }
-            className="rounded-md border border-[#d8e2d5] p-2"
+            className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]"
           >
             <Download className="size-4" />
           </button>
         </div>
+
+        <div className="border-b border-[#e4ece1] p-4">
+          <SearchAndFilter
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+            placeholder="Search food items..."
+          />
+        </div>
+
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[620px] text-sm">
-            <thead className="bg-[#f4f8f2] text-left">
-              <tr>
-                <th className="p-3">Item</th>
-                <th className="p-3">Carbs</th>
-                <th className="p-3">Proteins</th>
-                <th className="p-3">Fats</th>
-                <th className="p-3">Calories</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.foodItems.map((item) => (
-                <tr key={item.id} className="border-t border-[#eef3ec]">
-                  <td className="p-3 font-medium">{item.itemName}</td>
-                  <td className="p-3">{round(item.carbohydrates)}g</td>
-                  <td className="p-3">{round(item.proteins)}g</td>
-                  <td className="p-3">{round(item.fats)}g</td>
-                  <td className="p-3">{round(item.calories, 0)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          {filteredAndSortedItems.length === 0 ? (
+            <p className="p-5 text-center text-sm text-[#6a7669]">No food items found.</p>
+          ) : (
+            <table className="w-full min-w-[620px] text-sm">
+              <TableHeader
+                columns={[
+                  { key: "itemName", label: "Item" },
+                  { key: "carbohydrates", label: "Carbs" },
+                  { key: "proteins", label: "Proteins" },
+                  { key: "fats", label: "Fats" },
+                  { key: "calories", label: "Calories" },
+                ]}
+                sortConfig={sortConfig}
+                onSort={handleSort}
+              />
+              <tbody>
+                {filteredAndSortedItems.map((item) => (
+                  <tr key={item.id} className="border-t border-[#eef3ec] hover:bg-[#f9fcf8]">
+                    <td className="p-3 font-medium">{item.itemName}</td>
+                    <td className="p-3">{round(item.carbohydrates)}g</td>
+                    <td className="p-3">{round(item.proteins)}g</td>
+                    <td className="p-3">{round(item.fats)}g</td>
+                    <td className="p-3">{round(item.calories, 0)}</td>
+                    <td className="p-3"></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </section>
     </div>
@@ -901,14 +1372,108 @@ function Profile({ data }: { data: DashboardData }) {
 
 function Admin({ data }: { data: DashboardData }) {
   const [state, action] = useActionState(createUser, initialState);
+  const [userSearchTerm, setUserSearchTerm] = useState("");
+  const [comparisonSearchTerm, setComparisonSearchTerm] = useState("");
+  const [selectedPatientIds, setSelectedPatientIds] = useState<Set<string>>(new Set());
+  const [userSortConfig, setUserSortConfig] = useState<SortConfig>({ key: "name", direction: "asc" });
+  const [comparisonSortConfig, setComparisonSortConfig] = useState<SortConfig>({ key: "name", direction: "asc" });
 
   if (!data.adminMetrics) {
     return null;
   }
 
+  // Filter and sort users
+  const filteredAndSortedUsers = useMemo(() => {
+    let filtered = data.users.filter(
+      (user) =>
+        user.name.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
+        user.email.toLowerCase().includes(userSearchTerm.toLowerCase())
+    );
+
+    filtered.sort((a, b) => {
+      const aVal = a[userSortConfig.key as keyof UserSummary];
+      const bVal = b[userSortConfig.key as keyof UserSummary];
+
+      if (typeof aVal === "number" && typeof bVal === "number") {
+        return userSortConfig.direction === "asc" ? aVal - bVal : bVal - aVal;
+      }
+      if (typeof aVal === "string" && typeof bVal === "string") {
+        return userSortConfig.direction === "asc"
+          ? aVal.localeCompare(bVal)
+          : bVal.localeCompare(aVal);
+      }
+      return 0;
+    });
+
+    return filtered;
+  }, [data.users, userSearchTerm, userSortConfig]);
+
+  // Filter and sort comparison rows based on selected patients
+  const filteredAndSortedComparison = useMemo(() => {
+    let filtered = data.comparisonRows;
+
+    // If specific patients are selected, only show those
+    if (selectedPatientIds.size > 0) {
+      filtered = filtered.filter((row) => selectedPatientIds.has(row.userId));
+    }
+
+    // Apply search
+    filtered = filtered.filter(
+      (row) =>
+        row.name.toLowerCase().includes(comparisonSearchTerm.toLowerCase()) ||
+        row.email.toLowerCase().includes(comparisonSearchTerm.toLowerCase())
+    );
+
+    // Sort
+    filtered.sort((a, b) => {
+      const aVal = a[comparisonSortConfig.key as keyof ComparisonRow];
+      const bVal = b[comparisonSortConfig.key as keyof ComparisonRow];
+
+      if (typeof aVal === "number" && typeof bVal === "number") {
+        return comparisonSortConfig.direction === "asc" ? aVal - bVal : bVal - aVal;
+      }
+      if (typeof aVal === "string" && typeof bVal === "string") {
+        return comparisonSortConfig.direction === "asc"
+          ? aVal.localeCompare(bVal)
+          : bVal.localeCompare(aVal);
+      }
+      return 0;
+    });
+
+    return filtered;
+  }, [data.comparisonRows, selectedPatientIds, comparisonSearchTerm, comparisonSortConfig]);
+
+  const handleUserSort = (key: string) => {
+    setUserSortConfig((prev) => ({
+      key,
+      direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc",
+    }));
+  };
+
+  const handleComparisonSort = (key: string) => {
+    setComparisonSortConfig((prev) => ({
+      key,
+      direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc",
+    }));
+  };
+
+  const togglePatientSelection = (userId: string) => {
+    const newSet = new Set(selectedPatientIds);
+    if (newSet.has(userId)) {
+      newSet.delete(userId);
+    } else {
+      newSet.add(userId);
+    }
+    setSelectedPatientIds(newSet);
+  };
+
+  const clearPatientSelection = () => {
+    setSelectedPatientIds(new Set());
+  };
+
   return (
-    <div className="grid gap-5 xl:grid-cols-[0.95fr_1.05fr]">
-      <section className="space-y-4">
+    <div className="grid gap-5 lg:grid-cols-2">
+      <section className="space-y-4 lg:max-w-sm">
         <div className="grid grid-cols-2 gap-3">
           <StatCard label="Patients" value={`${data.adminMetrics.totalPatients}`} helper="Patient accounts" icon={Users} />
           <StatCard label="Food logs" value={`${data.adminMetrics.totalFoodLogs}`} helper="Latest loaded records" icon={Apple} />
@@ -918,7 +1483,7 @@ function Admin({ data }: { data: DashboardData }) {
 
         <form action={action} className="rounded-lg border border-[#dbe5d8] bg-white p-4">
           <h2 className="font-semibold">Create user</h2>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <div className="mt-4 grid gap-3">
             <Field name="name" label="Name" required />
             <Field name="email" label="Email" type="email" required />
             <Field name="pin" label="4 digit PIN" required />
@@ -938,119 +1503,251 @@ function Admin({ data }: { data: DashboardData }) {
           <div className="mt-4">
             <ActionMessage state={state} />
           </div>
-          <button className="mt-4 h-10 rounded-md bg-[#245b35] px-4 text-sm font-semibold text-white">
+          <button className="mt-4 h-10 w-full rounded-md bg-[#245b35] px-4 text-sm font-semibold text-white">
             Create user
           </button>
         </form>
       </section>
 
       <section className="space-y-5">
+        {/* Users Table */}
         <section className="rounded-lg border border-[#dbe5d8] bg-white">
           <div className="border-b border-[#e4ece1] p-4">
-            <h2 className="font-semibold">All users</h2>
-            <p className="text-sm text-[#6a7669]">Open a user from the selector to view all their details.</p>
+            <h2 className="mb-3 font-semibold">Users</h2>
+            <SearchAndFilter
+              searchTerm={userSearchTerm}
+              onSearchChange={setUserSearchTerm}
+              placeholder="Search by name or email..."
+            />
           </div>
-          <div className="divide-y divide-[#eef3ec]">
-            {data.users.map((user) => (
-              <a
-                key={user.id}
-                href={`/dashboard?userId=${user.id}`}
-                className="grid gap-2 p-4 hover:bg-[#f7faf5] sm:grid-cols-[1fr_auto]"
-              >
-                <div>
-                  <p className="font-medium">{user.name}</p>
-                  <p className="text-sm text-[#6a7669]">{user.email}</p>
-                </div>
-                <p className="text-sm text-[#6a7669]">
-                  {user.role} - {user.foodLogs ?? 0} logs - {user.medicalRecords ?? 0} medical
-                </p>
-              </a>
-            ))}
+          <div className="overflow-x-auto -mx-4 sm:mx-0">
+            <table className="w-full text-xs sm:text-sm">
+              <TableHeader
+                columns={[
+                  { key: "name", label: "Name" },
+                  { key: "email", label: "Email" },
+                  { key: "role", label: "Role" },
+                  { key: "foodLogs", label: "Logs" },
+                  { key: "medicalRecords", label: "Medical" },
+                ]}
+                sortConfig={userSortConfig}
+                onSort={handleUserSort}
+              />
+              <tbody>
+                {filteredAndSortedUsers.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="p-4 sm:p-5 text-center text-sm text-[#6a7669]">
+                      No users found.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredAndSortedUsers.map((user) => (
+                    <tr key={user.id} className="border-t border-[#eef3ec] hover:bg-[#f9fcf8]">
+                      <td className="p-2 sm:p-3 font-medium">
+                        <a href={`/dashboard?userId=${user.id}`} className="text-[#245b35] hover:underline">
+                          {user.name}
+                        </a>
+                      </td>
+                      <td className="p-2 sm:p-3 text-[#6a7669] truncate">{user.email}</td>
+                      <td className="p-2 sm:p-3">
+                        <span className={`rounded-full px-2 py-1 text-xs font-medium whitespace-nowrap inline-block ${
+                          user.role === "ADMIN"
+                            ? "bg-[#fff4e8] text-[#8a4a12]"
+                            : "bg-[#edf7ec] text-[#245b35]"
+                        }`}>
+                          {user.role}
+                        </span>
+                      </td>
+                      <td className="p-2 sm:p-3 text-right">{user.foodLogs ?? 0}</td>
+                      <td className="p-2 sm:p-3 text-right">{user.medicalRecords ?? 0}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
         </section>
 
+        {/* Cross-patient Comparison */}
         <section className="rounded-lg border border-[#dbe5d8] bg-white">
-          <div className="flex items-center justify-between border-b border-[#e4ece1] p-4">
-            <div>
-              <h2 className="font-semibold">Cross-patient comparison</h2>
-              <p className="text-sm text-[#6a7669]">Compare activity, nutrition averages, and latest biometrics.</p>
+          <div className="border-b border-[#e4ece1] p-4">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h2 className="font-semibold">Cross-patient comparison</h2>
+                <p className="text-sm text-[#6a7669]">
+                  {selectedPatientIds.size > 0
+                    ? `Comparing ${selectedPatientIds.size} patient${selectedPatientIds.size === 1 ? "" : "s"}`
+                    : "Check boxes to compare patients"}
+                </p>
+              </div>
+              <button
+                onClick={() =>
+                  downloadCsv("nutritrack-admin-comparison.csv", [
+                    [
+                      "Name",
+                      "Email",
+                      "Role",
+                      "Total Logs",
+                      "Avg Calories/Log",
+                      "Avg Carbs/Log",
+                      "Avg Proteins/Log",
+                      "Avg Fats/Log",
+                      "Latest BMI",
+                      "Latest BP Low",
+                      "Latest BP High",
+                      "Latest Medical Date",
+                    ],
+                    ...filteredAndSortedComparison.map((row) => [
+                      row.name,
+                      row.email,
+                      row.role,
+                      row.totalLogs,
+                      row.avgCaloriesPerLog,
+                      row.avgCarbsPerLog,
+                      row.avgProteinsPerLog,
+                      row.avgFatsPerLog,
+                      row.latestBmi,
+                      row.latestBpLow,
+                      row.latestBpHigh,
+                      row.latestMedicalDate,
+                    ]),
+                  ])
+                }
+                className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]"
+                disabled={filteredAndSortedComparison.length === 0}
+              >
+                <Download className="size-4" />
+              </button>
             </div>
-            <button
-              onClick={() =>
-                downloadCsv("nutritrack-admin-comparison.csv", [
-                  [
-                    "Name",
-                    "Email",
-                    "Role",
-                    "Total Logs",
-                    "Avg Calories/Log",
-                    "Avg Carbs/Log",
-                    "Avg Proteins/Log",
-                    "Avg Fats/Log",
-                    "Latest BMI",
-                    "Latest BP Low",
-                    "Latest BP High",
-                    "Latest Medical Date",
-                  ],
-                  ...data.comparisonRows.map((row) => [
-                    row.name,
-                    row.email,
-                    row.role,
-                    row.totalLogs,
-                    row.avgCaloriesPerLog,
-                    row.avgCarbsPerLog,
-                    row.avgProteinsPerLog,
-                    row.avgFatsPerLog,
-                    row.latestBmi,
-                    row.latestBpLow,
-                    row.latestBpHigh,
-                    row.latestMedicalDate,
-                  ]),
-                ])
-              }
-              className="rounded-md border border-[#d8e2d5] p-2"
-            >
-              <Download className="size-4" />
-            </button>
+
+            <div className="flex items-end gap-2">
+              <div className="flex-1">
+                <SearchAndFilter
+                  searchTerm={comparisonSearchTerm}
+                  onSearchChange={setComparisonSearchTerm}
+                  placeholder="Search patients..."
+                />
+              </div>
+              {selectedPatientIds.size > 0 && (
+                <button
+                  onClick={clearPatientSelection}
+                  className="h-10 rounded-md border border-[#d8e2d5] px-3 text-sm whitespace-nowrap hover:bg-[#f4f7f2]"
+                >
+                  Clear ({selectedPatientIds.size})
+                </button>
+              )}
+            </div>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[920px] text-sm">
-              <thead className="bg-[#f4f8f2] text-left">
-                <tr>
-                  <th className="p-3">User</th>
-                  <th className="p-3">Logs</th>
-                  <th className="p-3">Avg kcal</th>
-                  <th className="p-3">Avg carbs</th>
-                  <th className="p-3">Avg proteins</th>
-                  <th className="p-3">Avg fats</th>
-                  <th className="p-3">Latest BMI</th>
-                  <th className="p-3">Latest BP</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.comparisonRows.map((row) => (
-                  <tr key={row.userId} className="border-t border-[#eef3ec]">
-                    <td className="p-3">
-                      <a href={`/dashboard?userId=${row.userId}`} className="font-medium text-[#245b35]">
-                        {row.name}
-                      </a>
-                      <p className="text-xs text-[#6a7669]">{row.email}</p>
-                    </td>
-                    <td className="p-3">{row.totalLogs}</td>
-                    <td className="p-3">{round(row.avgCaloriesPerLog, 0)}</td>
-                    <td className="p-3">{round(row.avgCarbsPerLog)}g</td>
-                    <td className="p-3">{round(row.avgProteinsPerLog)}g</td>
-                    <td className="p-3">{round(row.avgFatsPerLog)}g</td>
-                    <td className="p-3">{row.latestBmi ? round(row.latestBmi) : "-"}</td>
-                    <td className="p-3">
-                      {row.latestBpHigh && row.latestBpLow
-                        ? `${round(row.latestBpHigh, 0)}/${round(row.latestBpLow, 0)}`
-                        : "-"}
-                    </td>
+
+          {/* Comparison Table */}
+          <div className="overflow-x-auto -mx-4 sm:mx-0">
+            {data.comparisonRows.length === 0 ? (
+              <p className="p-5 text-center text-sm text-[#6a7669]">
+                No patients available for comparison.
+              </p>
+            ) : (
+              <table className="w-full min-w-full text-xs sm:text-sm">
+                <thead className="bg-[#f4f8f2] text-left sticky top-0">
+                  <tr>
+                    <th className="p-2 sm:p-3 w-12">
+                      <input
+                        type="checkbox"
+                        checked={selectedPatientIds.size === filteredAndSortedComparison.length && filteredAndSortedComparison.length > 0}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            const newSet = new Set(selectedPatientIds);
+                            filteredAndSortedComparison.forEach((row) => newSet.add(row.userId));
+                            setSelectedPatientIds(newSet);
+                          } else {
+                            clearPatientSelection();
+                          }
+                        }}
+                        className="rounded border-[#d8e2d5]"
+                      />
+                    </th>
+                    <th
+                      className="cursor-pointer p-2 sm:p-3 hover:bg-[#e8f0e4] whitespace-nowrap"
+                      onClick={() => handleComparisonSort("name")}
+                    >
+                      <div className="flex items-center gap-1">
+                        User
+                        {comparisonSortConfig.key === "name" ? (
+                          comparisonSortConfig.direction === "asc" ? (
+                            <ChevronUp className="size-3 sm:size-4 text-[#4f7f5d]" />
+                          ) : (
+                            <ChevronDown className="size-3 sm:size-4 text-[#4f7f5d]" />
+                          )
+                        ) : (
+                          <ChevronDown className="size-3 sm:size-4 text-[#d8e2d5]" />
+                        )}
+                      </div>
+                    </th>
+                    <th
+                      className="cursor-pointer p-2 sm:p-3 hover:bg-[#e8f0e4] whitespace-nowrap"
+                      onClick={() => handleComparisonSort("totalLogs")}
+                    >
+                      <div className="flex items-center gap-1">
+                        Logs
+                        {comparisonSortConfig.key === "totalLogs" ? (
+                          comparisonSortConfig.direction === "asc" ? (
+                            <ChevronUp className="size-3 sm:size-4 text-[#4f7f5d]" />
+                          ) : (
+                            <ChevronDown className="size-3 sm:size-4 text-[#4f7f5d]" />
+                          )
+                        ) : (
+                          <ChevronDown className="size-3 sm:size-4 text-[#d8e2d5]" />
+                        )}
+                      </div>
+                    </th>
+                    <th className="p-2 sm:p-3 whitespace-nowrap">Avg kcal</th>
+                    <th className="p-2 sm:p-3 whitespace-nowrap">Avg carbs</th>
+                    <th className="p-2 sm:p-3 whitespace-nowrap">Avg proteins</th>
+                    <th className="p-2 sm:p-3 whitespace-nowrap">Avg fats</th>
+                    <th className="p-2 sm:p-3 whitespace-nowrap">Latest BMI</th>
+                    <th className="p-2 sm:p-3 whitespace-nowrap">Latest BP</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {filteredAndSortedComparison.length === 0 ? (
+                    <tr>
+                      <td colSpan={10} className="p-5 text-center text-sm text-[#6a7669]">
+                        {comparisonSearchTerm ? "No results found." : "Select patients to compare."}
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredAndSortedComparison.map((row) => (
+                      <tr key={row.userId} className="border-t border-[#eef3ec] hover:bg-[#f9fcf8]">
+                        <td className="p-2 sm:p-3">
+                          <input
+                            type="checkbox"
+                            checked={selectedPatientIds.has(row.userId)}
+                            onChange={() => togglePatientSelection(row.userId)}
+                            className="rounded border-[#d8e2d5]"
+                          />
+                        </td>
+                        <td className="p-2 sm:p-3 min-w-[150px]">
+                          <a href={`/dashboard?userId=${row.userId}`} className="font-medium text-[#245b35] hover:underline block text-xs sm:text-sm">
+                            {row.name}
+                          </a>
+                          <p className="text-xs text-[#6a7669]">{row.email}</p>
+                        </td>
+                        <td className="p-2 sm:p-3 text-right">{row.totalLogs}</td>
+                        <td className="p-2 sm:p-3 text-right">{round(row.avgCaloriesPerLog, 0)}</td>
+                        <td className="p-2 sm:p-3 text-right">{round(row.avgCarbsPerLog)}g</td>
+                        <td className="p-2 sm:p-3 text-right">{round(row.avgProteinsPerLog)}g</td>
+                        <td className="p-2 sm:p-3 text-right">{round(row.avgFatsPerLog)}g</td>
+                        <td className="p-2 sm:p-3 text-right">{row.latestBmi ? round(row.latestBmi) : "—"}</td>
+                        <td className="p-2 sm:p-3 text-right">
+                          {row.latestBpHigh && row.latestBpLow
+                            ? `${round(row.latestBpHigh, 0)}/${round(row.latestBpLow, 0)}`
+                            : "—"}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            )}
           </div>
         </section>
       </section>

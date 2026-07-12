@@ -54,7 +54,7 @@ export function InstallAppButton({ className = "", compactLabel }: InstallAppBut
       <span
         className={`inline-flex items-center rounded-md border border-dashed border-[#d8e2d5] px-3 py-2 text-sm text-[#6a7669] ${className}`}
       >
-        Use browser menu to install the web app
+        
       </span>
     );
   }

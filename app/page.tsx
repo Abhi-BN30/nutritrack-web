@@ -32,7 +32,7 @@ export default async function Home() {
               Patients log meals and biometrics from any device. Admins review every patient,
               compare trends, and maintain one centralized nutrition master table.
             </p>
-            <div className="mt-8 grid max-w-xl grid-cols-2 gap-3 sm:grid-cols-4">
+            {/* <div className="mt-8 grid max-w-xl grid-cols-2 gap-3 sm:grid-cols-4">
               {["PWA ready", "Neon DB", "PIN login", "Admin role"].map((item) => (
                 <div
                   key={item}
@@ -41,7 +41,7 @@ export default async function Home() {
                   {item}
                 </div>
               ))}
-            </div>
+            </div> */}
             <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
               <InstallAppButton />
               <p className="text-sm text-[#6a7669]">
@@ -50,7 +50,7 @@ export default async function Home() {
             </div>
           </div>
 
-          <div className="grid gap-3 text-sm text-[#6a7669] sm:grid-cols-3">
+          {/* <div className="grid gap-3 text-sm text-[#6a7669] sm:grid-cols-3">
             <div className="rounded-lg border border-[#dfe8dc] bg-white px-4 py-3">
               Email + PIN only authentication
             </div>
@@ -60,7 +60,7 @@ export default async function Home() {
             <div className="rounded-lg border border-[#dfe8dc] bg-white px-4 py-3">
               Optimized for Vercel + Neon deployment
             </div>
-          </div>
+          </div> */}
         </div>
 
         <div className="flex items-center bg-[#e8f0e4] px-6 py-10 sm:px-10 lg:px-16">

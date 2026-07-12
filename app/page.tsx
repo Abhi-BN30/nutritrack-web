@@ -16,9 +16,9 @@ export default async function Home() {
         <div className="flex flex-col justify-between px-6 py-8 sm:px-10 lg:px-16">
           <div className="flex items-center gap-3">
             <div className="grid size-10 place-items-center rounded-lg bg-[#245b35] text-lg font-bold text-white">
-              N
+              L
             </div>
-            <span className="text-lg font-semibold">NutriTrack</span>
+            <span className="text-lg font-semibold">LCHF</span>
           </div>
 
           <div className="max-w-2xl py-16">

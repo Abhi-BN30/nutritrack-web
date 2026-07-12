@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "NutriTrack",
-    short_name: "NutriTrack",
+    name: "LCHF",
+    short_name: "LCHF",
     description: "Nutrition, biometrics, and patient analytics.",
     start_url: "/dashboard",
     scope: "/",

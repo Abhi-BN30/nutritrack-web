@@ -761,18 +761,46 @@ function Tracker({ data }: { data: DashboardData }) {
   const [selectedDate, setSelectedDate] = useState(today);
   const [showAllLogs, setShowAllLogs] = useState(false);
   const [search, setSearch] = useState("");
+  const [logFilter, setLogFilter] = useState<"all" | "withRatio" | "highProtein" | "highCalories">("all");
+  const [logSort, setLogSort] = useState<"date_desc" | "date_asc" | "calories_desc" | "proteins_desc" | "carbs_desc">("date_desc");
   const [editingLog, setEditingLog] = useState<FoodLog | null>(null);
   const [quantityMetric, setQuantityMetric] = useState<"GRAMS" | "ML" | "INTEGER">("GRAMS");
 
   const selectedDateLogs = useMemo(() => data.foodLogs.filter((log) => log.date === selectedDate), [data.foodLogs, selectedDate]);
   const visibleLogs = useMemo(() => {
+    const keyword = search.trim().toLowerCase();
     const base = showAllLogs ? data.foodLogs : selectedDateLogs;
-    return base.filter((log) => {
-      const keyword = search.trim().toLowerCase();
-      if (!keyword) return true;
-      return log.dishName.toLowerCase().includes(keyword) || log.foodItem.toLowerCase().includes(keyword);
+    const filtered = base.filter((log) => {
+      const matchesSearch =
+        !keyword || log.dishName.toLowerCase().includes(keyword) || log.foodItem.toLowerCase().includes(keyword);
+      const matchesFilter =
+        logFilter === "all"
+          ? true
+          : logFilter === "withRatio"
+            ? log.proteinCarbRatio !== null
+            : logFilter === "highProtein"
+              ? log.proteins >= 20
+              : log.calories >= 500;
+
+      return matchesSearch && matchesFilter;
     });
-  }, [data.foodLogs, selectedDateLogs, search, showAllLogs]);
+
+    return [...filtered].sort((a, b) => {
+      switch (logSort) {
+        case "date_asc":
+          return a.date.localeCompare(b.date);
+        case "calories_desc":
+          return b.calories - a.calories;
+        case "proteins_desc":
+          return b.proteins - a.proteins;
+        case "carbs_desc":
+          return b.carbs - a.carbs;
+        case "date_desc":
+        default:
+          return b.date.localeCompare(a.date);
+      }
+    });
+  }, [data.foodLogs, logFilter, logSort, search, selectedDateLogs, showAllLogs]);
 
   const selectedTotals = useMemo(
     () => selectedDateLogs.reduce(
@@ -860,7 +888,28 @@ function Tracker({ data }: { data: DashboardData }) {
                 <button type="button" onClick={() => setShowAllLogs(true)} className={`rounded-md border px-3 py-2 text-sm ${showAllLogs ? "border-[#245b35] bg-[#edf7ec] text-[#245b35]" : "border-[#d8e2d5] hover:bg-[#f4f7f2]"}`}>Show all logs</button>
               </div>
             </div>
-            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search dish or food item" className="mt-3 h-10 w-full rounded-md border border-[#d8e2d5] bg-white px-3 text-sm outline-none focus:border-[#245b35]" />
+            <TableControls
+              searchValue={search}
+              onSearchChange={setSearch}
+              searchPlaceholder="Search dish or food item"
+              filterValue={logFilter}
+              onFilterChange={(value) => setLogFilter(value as "all" | "withRatio" | "highProtein" | "highCalories")}
+              filterOptions={[
+                { value: "all", label: "All entries" },
+                { value: "withRatio", label: "Has P/C ratio" },
+                { value: "highProtein", label: "High protein" },
+                { value: "highCalories", label: "High calorie" },
+              ]}
+              sortValue={logSort}
+              onSortChange={(value) => setLogSort(value as "date_desc" | "date_asc" | "calories_desc" | "proteins_desc" | "carbs_desc")}
+              sortOptions={[
+                { value: "date_desc", label: "Newest first" },
+                { value: "date_asc", label: "Oldest first" },
+                { value: "calories_desc", label: "Calories high to low" },
+                { value: "proteins_desc", label: "Proteins high to low" },
+                { value: "carbs_desc", label: "Carbs high to low" },
+              ]}
+            />
           </div>
           <div className="space-y-3 p-4 lg:hidden">
             {visibleLogs.length === 0 ? <p className="rounded-lg border border-dashed border-[#d8e2d5] bg-[#f9fbf8] p-4 text-center text-sm text-[#6a7669]">No food logs found.</p> : visibleLogs.map((log) => (
@@ -1242,7 +1291,43 @@ function Graphs({ data }: { data: DashboardData }) {
 }
 function DatabaseTab({ data }: { data: DashboardData }) {
   const [state, action] = useActionState(saveFoodItem, initialState);
+  const [foodSearch, setFoodSearch] = useState("");
+  const [foodFilter, setFoodFilter] = useState<"all" | "highProtein" | "highCalories" | "lowCarb">("all");
+  const [foodSort, setFoodSort] = useState<"name_asc" | "name_desc" | "calories_desc" | "proteins_desc" | "carbs_asc">("name_asc");
   const canEdit = data.currentUser.role === "ADMIN";
+
+  const filteredFoodItems = useMemo(() => {
+    const keyword = foodSearch.trim().toLowerCase();
+    const filtered = data.foodItems.filter((item) => {
+      const matchesSearch = !keyword || item.itemName.toLowerCase().includes(keyword);
+      const matchesFilter =
+        foodFilter === "all"
+          ? true
+          : foodFilter === "highProtein"
+            ? item.proteins >= 15
+            : foodFilter === "highCalories"
+              ? item.calories >= 250
+              : item.carbohydrates <= 10;
+
+      return matchesSearch && matchesFilter;
+    });
+
+    return [...filtered].sort((a, b) => {
+      switch (foodSort) {
+        case "name_desc":
+          return b.itemName.localeCompare(a.itemName);
+        case "calories_desc":
+          return b.calories - a.calories;
+        case "proteins_desc":
+          return b.proteins - a.proteins;
+        case "carbs_asc":
+          return a.carbohydrates - b.carbohydrates;
+        case "name_asc":
+        default:
+          return a.itemName.localeCompare(b.itemName);
+      }
+    });
+  }, [data.foodItems, foodFilter, foodSearch, foodSort]);
 
   return (
     <div className="grid gap-5 xl:grid-cols-[0.82fr_1.18fr]">
@@ -1267,15 +1352,39 @@ function DatabaseTab({ data }: { data: DashboardData }) {
       <section className="min-w-0 rounded-lg border border-[#dbe5d8] bg-white">
         <div className="flex items-center justify-between border-b border-[#e4ece1] p-4">
           <div><h2 className="font-semibold">Food database</h2></div>
-          <button onClick={() => downloadCsv("nutritrack-food-master.csv", [["Item", "Carbohydrates", "Proteins", "Fats", "Calories"], ...data.foodItems.map((item) => [item.itemName, item.carbohydrates, item.proteins, item.fats, item.calories])])} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]"><Download className="size-4" /></button>
+          <button onClick={() => downloadCsv("nutritrack-food-master.csv", [["Item", "Carbohydrates", "Proteins", "Fats", "Calories"], ...filteredFoodItems.map((item) => [item.itemName, item.carbohydrates, item.proteins, item.fats, item.calories])])} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]"><Download className="size-4" /></button>
         </div>
-        <div className="space-y-3 p-4 lg:hidden">
-          {data.foodItems.map((item) => <article key={item.id} className="rounded-lg border border-[#e4ece1] bg-[#f9fbf8] p-4"><p className="font-medium text-[#172117]">{item.itemName}</p><div className="mt-3 grid grid-cols-2 gap-3 text-sm text-[#4d5b4c]"><p><span className="font-medium text-[#172117]">Carbs:</span> {round(item.carbohydrates)}g</p><p><span className="font-medium text-[#172117]">Proteins:</span> {round(item.proteins)}g</p><p><span className="font-medium text-[#172117]">Fats:</span> {round(item.fats)}g</p><p><span className="font-medium text-[#172117]">Calories:</span> {round(item.calories, 0)}</p></div></article>)}
+        <div className="px-4 pb-4">
+          <TableControls
+            searchValue={foodSearch}
+            onSearchChange={setFoodSearch}
+            searchPlaceholder="Search food item"
+            filterValue={foodFilter}
+            onFilterChange={(value) => setFoodFilter(value as "all" | "highProtein" | "highCalories" | "lowCarb")}
+            filterOptions={[
+              { value: "all", label: "All foods" },
+              { value: "highProtein", label: "High protein" },
+              { value: "highCalories", label: "High calorie" },
+              { value: "lowCarb", label: "Low carb" },
+            ]}
+            sortValue={foodSort}
+            onSortChange={(value) => setFoodSort(value as "name_asc" | "name_desc" | "calories_desc" | "proteins_desc" | "carbs_asc")}
+            sortOptions={[
+              { value: "name_asc", label: "Name A to Z" },
+              { value: "name_desc", label: "Name Z to A" },
+              { value: "calories_desc", label: "Calories high to low" },
+              { value: "proteins_desc", label: "Proteins high to low" },
+              { value: "carbs_asc", label: "Carbs low to high" },
+            ]}
+          />
+        </div>
+        <div className="space-y-3 px-4 pb-4 lg:hidden">
+          {filteredFoodItems.length === 0 ? <p className="rounded-lg border border-dashed border-[#d8e2d5] bg-[#f9fbf8] p-4 text-center text-sm text-[#6a7669]">No food items found.</p> : filteredFoodItems.map((item) => <article key={item.id} className="rounded-lg border border-[#e4ece1] bg-[#f9fbf8] p-4"><p className="font-medium text-[#172117]">{item.itemName}</p><div className="mt-3 grid grid-cols-2 gap-3 text-sm text-[#4d5b4c]"><p><span className="font-medium text-[#172117]">Carbs:</span> {round(item.carbohydrates)}g</p><p><span className="font-medium text-[#172117]">Proteins:</span> {round(item.proteins)}g</p><p><span className="font-medium text-[#172117]">Fats:</span> {round(item.fats)}g</p><p><span className="font-medium text-[#172117]">Calories:</span> {round(item.calories, 0)}</p></div></article>)}
         </div>
         <div className="hidden overflow-x-auto lg:block">
           <table className="w-full min-w-[620px] text-sm">
             <thead className="bg-[#f4f8f2] text-left"><tr><th className="p-3">Item</th><th className="p-3">Carbs</th><th className="p-3">Proteins</th><th className="p-3">Fats</th><th className="p-3">Calories</th></tr></thead>
-            <tbody>{data.foodItems.map((item) => <tr key={item.id} className="border-t border-[#eef3ec]"><td className="p-3 font-medium">{item.itemName}</td><td className="p-3">{round(item.carbohydrates)}g</td><td className="p-3">{round(item.proteins)}g</td><td className="p-3">{round(item.fats)}g</td><td className="p-3">{round(item.calories, 0)}</td></tr>)}</tbody>
+            <tbody>{filteredFoodItems.length === 0 ? <tr><td colSpan={5} className="p-4 text-center text-[#6a7669]">No food items found.</td></tr> : filteredFoodItems.map((item) => <tr key={item.id} className="border-t border-[#eef3ec]"><td className="p-3 font-medium">{item.itemName}</td><td className="p-3">{round(item.carbohydrates)}g</td><td className="p-3">{round(item.proteins)}g</td><td className="p-3">{round(item.fats)}g</td><td className="p-3">{round(item.calories, 0)}</td></tr>)}</tbody>
           </table>
         </div>
       </section>
@@ -1287,6 +1396,43 @@ function Profile({ data }: { data: DashboardData }) {
   const [profileState, profileAction] = useActionState(updateProfile, initialState);
   const [pinState, pinAction] = useActionState(updatePin, initialState);
   const [targetState, targetAction] = useActionState(saveNutritionTarget, initialState);
+  const [targetSearch, setTargetSearch] = useState("");
+  const [targetFilter, setTargetFilter] = useState<"all" | "past" | "todayForward" | "highCalories">("all");
+  const [targetSort, setTargetSort] = useState<"effective_desc" | "effective_asc" | "calories_desc" | "proteins_desc">("effective_desc");
+
+  const filteredTargetProfiles = useMemo(() => {
+    const keyword = targetSearch.trim().toLowerCase();
+    const filtered = data.targetProfiles.filter((target) => {
+      const matchesSearch =
+        !keyword ||
+        target.displayEffectiveFrom.toLowerCase().includes(keyword) ||
+        target.effectiveFrom.includes(keyword);
+      const matchesFilter =
+        targetFilter === "all"
+          ? true
+          : targetFilter === "past"
+            ? target.effectiveFrom < today
+            : targetFilter === "todayForward"
+              ? target.effectiveFrom >= today
+              : target.targetCalories >= 2000;
+
+      return matchesSearch && matchesFilter;
+    });
+
+    return [...filtered].sort((a, b) => {
+      switch (targetSort) {
+        case "effective_asc":
+          return a.effectiveFrom.localeCompare(b.effectiveFrom);
+        case "calories_desc":
+          return b.targetCalories - a.targetCalories;
+        case "proteins_desc":
+          return b.targetProteins - a.targetProteins;
+        case "effective_desc":
+        default:
+          return b.effectiveFrom.localeCompare(a.effectiveFrom);
+      }
+    });
+  }, [data.targetProfiles, targetFilter, targetSearch, targetSort]);
 
   return (
     <div className="grid gap-5 2xl:grid-cols-[0.88fr_1.12fr]">
@@ -1337,14 +1483,35 @@ function Profile({ data }: { data: DashboardData }) {
           <div className="mt-4 grid gap-3 sm:grid-cols-2"><StatCard label="Days on app" value={`${data.selectedUser.daysOnApp}`} helper="Based on start date" icon={UserRound} /><StatCard label="Days tracked" value={`${data.selectedUser.daysTracked}`} helper="Distinct food log dates" icon={Activity} /></div>
         </div>
         <section className="rounded-lg border border-[#dbe5d8] bg-white p-4">
-          <div className="flex items-center justify-between gap-3"><div><h2 className="font-semibold">Target history</h2></div><button onClick={() => downloadCsv("nutritrack-target-history.csv", [["Effective From", "Calories", "Carbs", "Proteins", "Fats"], ...data.targetProfiles.map((target) => [target.displayEffectiveFrom, target.targetCalories, target.targetCarbs, target.targetProteins, target.targetFats])])} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]"><Download className="size-4" /></button></div>
+          <div className="flex items-center justify-between gap-3"><div><h2 className="font-semibold">Target history</h2></div><button onClick={() => downloadCsv("nutritrack-target-history.csv", [["Effective From", "Calories", "Carbs", "Proteins", "Fats"], ...filteredTargetProfiles.map((target) => [target.displayEffectiveFrom, target.targetCalories, target.targetCarbs, target.targetProteins, target.targetFats])])} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]"><Download className="size-4" /></button></div>
+          <TableControls
+            searchValue={targetSearch}
+            onSearchChange={setTargetSearch}
+            searchPlaceholder="Search effective date"
+            filterValue={targetFilter}
+            onFilterChange={(value) => setTargetFilter(value as "all" | "past" | "todayForward" | "highCalories")}
+            filterOptions={[
+              { value: "all", label: "All targets" },
+              { value: "past", label: "Past targets" },
+              { value: "todayForward", label: "Today onward" },
+              { value: "highCalories", label: "2000+ kcal" },
+            ]}
+            sortValue={targetSort}
+            onSortChange={(value) => setTargetSort(value as "effective_desc" | "effective_asc" | "calories_desc" | "proteins_desc")}
+            sortOptions={[
+              { value: "effective_desc", label: "Newest effective date" },
+              { value: "effective_asc", label: "Oldest effective date" },
+              { value: "calories_desc", label: "Calories high to low" },
+              { value: "proteins_desc", label: "Proteins high to low" },
+            ]}
+          />
           <div className="mt-4 space-y-3 lg:hidden">
-            {data.targetProfiles.length === 0 ? <p className="rounded-lg border border-dashed border-[#d8e2d5] bg-[#f9fbf8] p-4 text-center text-sm text-[#6a7669]">No target history yet.</p> : data.targetProfiles.map((target) => <article key={target.id} className="rounded-lg border border-[#e4ece1] bg-[#f9fbf8] p-4"><p className="font-medium text-[#172117]">{target.displayEffectiveFrom}</p><div className="mt-3 grid grid-cols-2 gap-3 text-sm text-[#4d5b4c]"><p><span className="font-medium text-[#172117]">Calories:</span> {round(target.targetCalories, 0)}</p><p><span className="font-medium text-[#172117]">Carbs:</span> {round(target.targetCarbs)}g</p><p><span className="font-medium text-[#172117]">Proteins:</span> {round(target.targetProteins)}g</p><p><span className="font-medium text-[#172117]">Fats:</span> {round(target.targetFats)}g</p></div></article>)}
+            {filteredTargetProfiles.length === 0 ? <p className="rounded-lg border border-dashed border-[#d8e2d5] bg-[#f9fbf8] p-4 text-center text-sm text-[#6a7669]">No target history found.</p> : filteredTargetProfiles.map((target) => <article key={target.id} className="rounded-lg border border-[#e4ece1] bg-[#f9fbf8] p-4"><p className="font-medium text-[#172117]">{target.displayEffectiveFrom}</p><div className="mt-3 grid grid-cols-2 gap-3 text-sm text-[#4d5b4c]"><p><span className="font-medium text-[#172117]">Calories:</span> {round(target.targetCalories, 0)}</p><p><span className="font-medium text-[#172117]">Carbs:</span> {round(target.targetCarbs)}g</p><p><span className="font-medium text-[#172117]">Proteins:</span> {round(target.targetProteins)}g</p><p><span className="font-medium text-[#172117]">Fats:</span> {round(target.targetFats)}g</p></div></article>)}
           </div>
           <div className="mt-4 hidden overflow-x-auto lg:block">
             <table className="w-full min-w-[560px] text-sm">
               <thead className="bg-[#f4f8f2] text-left"><tr><th className="p-3">Effective from</th><th className="p-3">Calories</th><th className="p-3">Carbs</th><th className="p-3">Proteins</th><th className="p-3">Fats</th></tr></thead>
-              <tbody>{data.targetProfiles.length === 0 ? <tr><td colSpan={5} className="p-4 text-center text-[#6a7669]">No target history yet.</td></tr> : data.targetProfiles.map((target) => <tr key={target.id} className="border-t border-[#eef3ec]"><td className="p-3 font-medium">{target.displayEffectiveFrom}</td><td className="p-3">{round(target.targetCalories, 0)}</td><td className="p-3">{round(target.targetCarbs)}g</td><td className="p-3">{round(target.targetProteins)}g</td><td className="p-3">{round(target.targetFats)}g</td></tr>)}</tbody>
+              <tbody>{filteredTargetProfiles.length === 0 ? <tr><td colSpan={5} className="p-4 text-center text-[#6a7669]">No target history found.</td></tr> : filteredTargetProfiles.map((target) => <tr key={target.id} className="border-t border-[#eef3ec]"><td className="p-3 font-medium">{target.displayEffectiveFrom}</td><td className="p-3">{round(target.targetCalories, 0)}</td><td className="p-3">{round(target.targetCarbs)}g</td><td className="p-3">{round(target.targetProteins)}g</td><td className="p-3">{round(target.targetFats)}g</td></tr>)}</tbody>
             </table>
           </div>
         </section>
@@ -1355,15 +1522,68 @@ function Profile({ data }: { data: DashboardData }) {
 
 function Admin({ data }: { data: DashboardData }) {
   const [state, action] = useActionState(createUser, initialState);
-  const [search, setSearch] = useState("");
+  const [userSearch, setUserSearch] = useState("");
+  const [userRoleFilter, setUserRoleFilter] = useState<"all" | Role>("all");
+  const [userSort, setUserSort] = useState<"name_asc" | "name_desc" | "tracking_desc" | "days_desc">("name_asc");
+  const [comparisonSearch, setComparisonSearch] = useState("");
+  const [comparisonRoleFilter, setComparisonRoleFilter] = useState<"all" | Role>("all");
+  const [comparisonSort, setComparisonSort] = useState<"tracking_desc" | "logs_desc" | "calories_desc" | "name_asc">("tracking_desc");
+
+  const filteredUsers = useMemo(() => {
+    const keyword = userSearch.trim().toLowerCase();
+    const filtered = data.users.filter((user) => {
+      const matchesSearch =
+        !keyword ||
+        user.name.toLowerCase().includes(keyword) ||
+        user.email.toLowerCase().includes(keyword) ||
+        user.mobileNumber.includes(keyword);
+      const matchesFilter = userRoleFilter === "all" ? true : user.role === userRoleFilter;
+      return matchesSearch && matchesFilter;
+    });
+
+    return [...filtered].sort((a, b) => {
+      switch (userSort) {
+        case "name_desc":
+          return b.name.localeCompare(a.name);
+        case "tracking_desc":
+          return b.trackingRate - a.trackingRate;
+        case "days_desc":
+          return b.daysTracked - a.daysTracked;
+        case "name_asc":
+        default:
+          return a.name.localeCompare(b.name);
+      }
+    });
+  }, [data.users, userRoleFilter, userSearch, userSort]);
+
+  const filteredComparisonRows = useMemo(() => {
+    const keyword = comparisonSearch.trim().toLowerCase();
+    const filtered = data.comparisonRows.filter((row) => {
+      const matchesSearch =
+        !keyword ||
+        row.name.toLowerCase().includes(keyword) ||
+        row.email.toLowerCase().includes(keyword) ||
+        row.mobileNumber.includes(keyword);
+      const matchesFilter = comparisonRoleFilter === "all" ? true : row.role === comparisonRoleFilter;
+      return matchesSearch && matchesFilter;
+    });
+
+    return [...filtered].sort((a, b) => {
+      switch (comparisonSort) {
+        case "logs_desc":
+          return b.totalLogs - a.totalLogs;
+        case "calories_desc":
+          return b.avgCaloriesPerLog - a.avgCaloriesPerLog;
+        case "name_asc":
+          return a.name.localeCompare(b.name);
+        case "tracking_desc":
+        default:
+          return b.trackingRate - a.trackingRate;
+      }
+    });
+  }, [comparisonRoleFilter, comparisonSearch, comparisonSort, data.comparisonRows]);
 
   if (!data.adminMetrics) return null;
-
-  const filteredUsers = data.users.filter((user) => {
-    const keyword = search.trim().toLowerCase();
-    if (!keyword) return true;
-    return user.name.toLowerCase().includes(keyword) || user.email.toLowerCase().includes(keyword) || user.mobileNumber.includes(keyword);
-  });
 
   return (
     <div className="grid gap-5 2xl:grid-cols-[0.9fr_1.1fr]">
@@ -1412,26 +1632,27 @@ function Admin({ data }: { data: DashboardData }) {
       </section>
       <section className="space-y-5">
         <section className="min-w-0 rounded-lg border border-[#dbe5d8] bg-white">
-          <div className="border-b border-[#e4ece1] p-4"><h2 className="font-semibold">All users</h2><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by name, email, or mobile" className="mt-3 h-10 w-full rounded-md border border-[#d8e2d5] bg-white px-3 text-sm outline-none focus:border-[#245b35]" /></div>
+          <div className="border-b border-[#e4ece1] p-4"><h2 className="font-semibold">All users</h2><TableControls searchValue={userSearch} onSearchChange={setUserSearch} searchPlaceholder="Search by name, email, or mobile" filterValue={userRoleFilter} onFilterChange={(value) => setUserRoleFilter(value as "all" | Role)} filterOptions={[{ value: "all", label: "All roles" }, { value: "USER", label: "Users" }, { value: "ADMIN", label: "Admins" }]} sortValue={userSort} onSortChange={(value) => setUserSort(value as "name_asc" | "name_desc" | "tracking_desc" | "days_desc")} sortOptions={[{ value: "name_asc", label: "Name A to Z" }, { value: "name_desc", label: "Name Z to A" }, { value: "tracking_desc", label: "Tracking high to low" }, { value: "days_desc", label: "Days tracked high to low" }]} /></div>
           <div className="space-y-3 p-4 lg:hidden">
-            {filteredUsers.map((user) => <article key={user.id} className="rounded-lg border border-[#e4ece1] bg-[#f9fbf8] p-4"><a href={`/dashboard?userId=${user.id}`} className="font-medium text-[#245b35] hover:underline">{user.name}</a><p className="mt-1 text-sm text-[#6a7669]">{user.email}</p><div className="mt-3 grid grid-cols-2 gap-3 text-sm text-[#4d5b4c]"><p><span className="font-medium text-[#172117]">Mobile:</span> {user.mobileNumber}</p><p><span className="font-medium text-[#172117]">Role:</span> {user.role}</p><p><span className="font-medium text-[#172117]">Days tracked:</span> {user.daysTracked}</p><p><span className="font-medium text-[#172117]">Tracking:</span> {Math.round(user.trackingRate)}%</p></div></article>)}
+            {filteredUsers.length === 0 ? <p className="rounded-lg border border-dashed border-[#d8e2d5] bg-[#f9fbf8] p-4 text-center text-sm text-[#6a7669]">No users found.</p> : filteredUsers.map((user) => <article key={user.id} className="rounded-lg border border-[#e4ece1] bg-[#f9fbf8] p-4"><a href={`/dashboard?userId=${user.id}`} className="font-medium text-[#245b35] hover:underline">{user.name}</a><p className="mt-1 text-sm text-[#6a7669]">{user.email}</p><div className="mt-3 grid grid-cols-2 gap-3 text-sm text-[#4d5b4c]"><p><span className="font-medium text-[#172117]">Mobile:</span> {user.mobileNumber}</p><p><span className="font-medium text-[#172117]">Role:</span> {user.role}</p><p><span className="font-medium text-[#172117]">Days tracked:</span> {user.daysTracked}</p><p><span className="font-medium text-[#172117]">Tracking:</span> {Math.round(user.trackingRate)}%</p></div></article>)}
           </div>
           <div className="hidden overflow-x-auto lg:block">
             <table className="w-full min-w-[820px] text-sm">
               <thead className="bg-[#f4f8f2] text-left"><tr><th className="p-3">Name</th><th className="p-3">Email</th><th className="p-3">Mobile</th><th className="p-3">Role</th><th className="p-3">Days tracked</th><th className="p-3">Tracking %</th></tr></thead>
-              <tbody>{filteredUsers.map((user) => <tr key={user.id} className="border-t border-[#eef3ec]"><td className="p-3 font-medium"><a href={`/dashboard?userId=${user.id}`} className="text-[#245b35] hover:underline">{user.name}</a></td><td className="p-3">{user.email}</td><td className="p-3">{user.mobileNumber}</td><td className="p-3">{user.role}</td><td className="p-3">{user.daysTracked}</td><td className="p-3">{Math.round(user.trackingRate)}%</td></tr>)}</tbody>
+              <tbody>{filteredUsers.length === 0 ? <tr><td colSpan={6} className="p-4 text-center text-[#6a7669]">No users found.</td></tr> : filteredUsers.map((user) => <tr key={user.id} className="border-t border-[#eef3ec]"><td className="p-3 font-medium"><a href={`/dashboard?userId=${user.id}`} className="text-[#245b35] hover:underline">{user.name}</a></td><td className="p-3">{user.email}</td><td className="p-3">{user.mobileNumber}</td><td className="p-3">{user.role}</td><td className="p-3">{user.daysTracked}</td><td className="p-3">{Math.round(user.trackingRate)}%</td></tr>)}</tbody>
             </table>
           </div>
         </section>
         <section className="min-w-0 rounded-lg border border-[#dbe5d8] bg-white">
-          <div className="flex items-center justify-between border-b border-[#e4ece1] p-4"><div><h2 className="font-semibold">Cross-user comparison</h2><p className="text-sm text-[#6a7669]">Compare intake, tracking, and latest medical values.</p></div><button onClick={() => downloadCsv("nutritrack-admin-comparison.csv", [["Name", "Email", "Mobile", "Role", "Total Logs", "Days Tracked", "Tracking %", "Avg Calories/Log", "Avg Carbs/Log", "Avg Proteins/Log", "Avg Fats/Log", "Latest BMI", "Latest BP Low", "Latest BP High", "Latest Medical Date"], ...data.comparisonRows.map((row) => [row.name, row.email, row.mobileNumber, row.role, row.totalLogs, row.daysTracked, Math.round(row.trackingRate), row.avgCaloriesPerLog, row.avgCarbsPerLog, row.avgProteinsPerLog, row.avgFatsPerLog, row.latestBmi, row.latestBpLow, row.latestBpHigh, row.latestMedicalDate])])} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]"><Download className="size-4" /></button></div>
-          <div className="space-y-3 p-4 lg:hidden">
-            {data.comparisonRows.map((row) => <article key={row.userId} className="rounded-lg border border-[#e4ece1] bg-[#f9fbf8] p-4"><a href={`/dashboard?userId=${row.userId}`} className="font-medium text-[#245b35] hover:underline">{row.name}</a><p className="mt-1 text-sm text-[#6a7669]">{row.email}</p><div className="mt-3 grid grid-cols-2 gap-3 text-sm text-[#4d5b4c]"><p><span className="font-medium text-[#172117]">Logs:</span> {row.totalLogs}</p><p><span className="font-medium text-[#172117]">Tracked days:</span> {row.daysTracked}</p><p><span className="font-medium text-[#172117]">Tracking:</span> {Math.round(row.trackingRate)}%</p><p><span className="font-medium text-[#172117]">Avg kcal:</span> {round(row.avgCaloriesPerLog, 0)}</p><p><span className="font-medium text-[#172117]">Avg carbs:</span> {round(row.avgCarbsPerLog)}g</p><p><span className="font-medium text-[#172117]">Avg proteins:</span> {round(row.avgProteinsPerLog)}g</p><p><span className="font-medium text-[#172117]">Avg fats:</span> {round(row.avgFatsPerLog)}g</p><p><span className="font-medium text-[#172117]">Latest BMI:</span> {row.latestBmi === null ? "-" : round(row.latestBmi)}</p></div><p className="mt-3 text-sm text-[#4d5b4c]"><span className="font-medium text-[#172117]">Latest BP:</span> {row.latestBpHigh && row.latestBpLow ? `${round(row.latestBpHigh, 0)}/${round(row.latestBpLow, 0)}` : "-"}</p></article>)}
+          <div className="flex items-center justify-between border-b border-[#e4ece1] p-4"><div><h2 className="font-semibold">Cross-user comparison</h2><p className="text-sm text-[#6a7669]">Compare intake, tracking, and latest medical values.</p></div><button onClick={() => downloadCsv("nutritrack-admin-comparison.csv", [["Name", "Email", "Mobile", "Role", "Total Logs", "Days Tracked", "Tracking %", "Avg Calories/Log", "Avg Carbs/Log", "Avg Proteins/Log", "Avg Fats/Log", "Latest BMI", "Latest BP Low", "Latest BP High", "Latest Medical Date"], ...filteredComparisonRows.map((row) => [row.name, row.email, row.mobileNumber, row.role, row.totalLogs, row.daysTracked, Math.round(row.trackingRate), row.avgCaloriesPerLog, row.avgCarbsPerLog, row.avgProteinsPerLog, row.avgFatsPerLog, row.latestBmi, row.latestBpLow, row.latestBpHigh, row.latestMedicalDate])])} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]"><Download className="size-4" /></button></div>
+          <div className="px-4 pb-4"><TableControls searchValue={comparisonSearch} onSearchChange={setComparisonSearch} searchPlaceholder="Search user, email, or mobile" filterValue={comparisonRoleFilter} onFilterChange={(value) => setComparisonRoleFilter(value as "all" | Role)} filterOptions={[{ value: "all", label: "All roles" }, { value: "USER", label: "Users" }, { value: "ADMIN", label: "Admins" }]} sortValue={comparisonSort} onSortChange={(value) => setComparisonSort(value as "tracking_desc" | "logs_desc" | "calories_desc" | "name_asc")} sortOptions={[{ value: "tracking_desc", label: "Tracking high to low" }, { value: "logs_desc", label: "Logs high to low" }, { value: "calories_desc", label: "Avg kcal high to low" }, { value: "name_asc", label: "Name A to Z" }]} /></div>
+          <div className="space-y-3 px-4 pb-4 lg:hidden">
+            {filteredComparisonRows.length === 0 ? <p className="rounded-lg border border-dashed border-[#d8e2d5] bg-[#f9fbf8] p-4 text-center text-sm text-[#6a7669]">No comparison rows found.</p> : filteredComparisonRows.map((row) => <article key={row.userId} className="rounded-lg border border-[#e4ece1] bg-[#f9fbf8] p-4"><a href={`/dashboard?userId=${row.userId}`} className="font-medium text-[#245b35] hover:underline">{row.name}</a><p className="mt-1 text-sm text-[#6a7669]">{row.email}</p><div className="mt-3 grid grid-cols-2 gap-3 text-sm text-[#4d5b4c]"><p><span className="font-medium text-[#172117]">Logs:</span> {row.totalLogs}</p><p><span className="font-medium text-[#172117]">Tracked days:</span> {row.daysTracked}</p><p><span className="font-medium text-[#172117]">Tracking:</span> {Math.round(row.trackingRate)}%</p><p><span className="font-medium text-[#172117]">Avg kcal:</span> {round(row.avgCaloriesPerLog, 0)}</p><p><span className="font-medium text-[#172117]">Avg carbs:</span> {round(row.avgCarbsPerLog)}g</p><p><span className="font-medium text-[#172117]">Avg proteins:</span> {round(row.avgProteinsPerLog)}g</p><p><span className="font-medium text-[#172117]">Avg fats:</span> {round(row.avgFatsPerLog)}g</p><p><span className="font-medium text-[#172117]">Latest BMI:</span> {row.latestBmi === null ? "-" : round(row.latestBmi)}</p></div><p className="mt-3 text-sm text-[#4d5b4c]"><span className="font-medium text-[#172117]">Latest BP:</span> {row.latestBpHigh && row.latestBpLow ? `${round(row.latestBpHigh, 0)}/${round(row.latestBpLow, 0)}` : "-"}</p></article>)}
           </div>
           <div className="hidden overflow-x-auto lg:block">
             <table className="w-full min-w-[1080px] text-sm">
               <thead className="bg-[#f4f8f2] text-left"><tr><th className="p-3">User</th><th className="p-3">Logs</th><th className="p-3">Tracked days</th><th className="p-3">Tracking %</th><th className="p-3">Avg kcal</th><th className="p-3">Avg carbs</th><th className="p-3">Avg proteins</th><th className="p-3">Avg fats</th><th className="p-3">Latest BMI</th><th className="p-3">Latest BP</th></tr></thead>
-              <tbody>{data.comparisonRows.map((row) => <tr key={row.userId} className="border-t border-[#eef3ec]"><td className="p-3"><a href={`/dashboard?userId=${row.userId}`} className="font-medium text-[#245b35] hover:underline">{row.name}</a><p className="text-xs text-[#6a7669]">{row.email}</p></td><td className="p-3">{row.totalLogs}</td><td className="p-3">{row.daysTracked}</td><td className="p-3">{Math.round(row.trackingRate)}%</td><td className="p-3">{round(row.avgCaloriesPerLog, 0)}</td><td className="p-3">{round(row.avgCarbsPerLog)}g</td><td className="p-3">{round(row.avgProteinsPerLog)}g</td><td className="p-3">{round(row.avgFatsPerLog)}g</td><td className="p-3">{row.latestBmi === null ? "-" : round(row.latestBmi)}</td><td className="p-3">{row.latestBpHigh && row.latestBpLow ? `${round(row.latestBpHigh, 0)}/${round(row.latestBpLow, 0)}` : "-"}</td></tr>)}</tbody>
+              <tbody>{filteredComparisonRows.length === 0 ? <tr><td colSpan={10} className="p-4 text-center text-[#6a7669]">No comparison rows found.</td></tr> : filteredComparisonRows.map((row) => <tr key={row.userId} className="border-t border-[#eef3ec]"><td className="p-3"><a href={`/dashboard?userId=${row.userId}`} className="font-medium text-[#245b35] hover:underline">{row.name}</a><p className="text-xs text-[#6a7669]">{row.email}</p></td><td className="p-3">{row.totalLogs}</td><td className="p-3">{row.daysTracked}</td><td className="p-3">{Math.round(row.trackingRate)}%</td><td className="p-3">{round(row.avgCaloriesPerLog, 0)}</td><td className="p-3">{round(row.avgCarbsPerLog)}g</td><td className="p-3">{round(row.avgProteinsPerLog)}g</td><td className="p-3">{round(row.avgFatsPerLog)}g</td><td className="p-3">{row.latestBmi === null ? "-" : round(row.latestBmi)}</td><td className="p-3">{row.latestBpHigh && row.latestBpLow ? `${round(row.latestBpHigh, 0)}/${round(row.latestBpLow, 0)}` : "-"}</td></tr>)}</tbody>
             </table>
           </div>
         </section>

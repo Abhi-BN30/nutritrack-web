@@ -404,6 +404,74 @@ function PageHighlightTile({
   );
 }
 
+type ControlOption = {
+  value: string;
+  label: string;
+};
+
+function TableControls({
+  searchValue,
+  onSearchChange,
+  searchPlaceholder,
+  filterValue,
+  onFilterChange,
+  filterOptions,
+  sortValue,
+  onSortChange,
+  sortOptions,
+}: {
+  searchValue: string;
+  onSearchChange: (value: string) => void;
+  searchPlaceholder: string;
+  filterValue: string;
+  onFilterChange: (value: string) => void;
+  filterOptions: ControlOption[];
+  sortValue: string;
+  onSortChange: (value: string) => void;
+  sortOptions: ControlOption[];
+}) {
+  return (
+    <div className="mt-3 flex flex-col gap-2 lg:flex-row lg:items-center">
+      <input
+        value={searchValue}
+        onChange={(event) => onSearchChange(event.target.value)}
+        placeholder={searchPlaceholder}
+        className="h-10 w-full rounded-md border border-[#d8e2d5] bg-white px-3 text-sm outline-none focus:border-[#245b35] lg:flex-1"
+      />
+      <div className="grid gap-2 sm:grid-cols-2 lg:w-auto">
+        <label className="block">
+          <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-[#6a7669]">Filter</span>
+          <select
+            value={filterValue}
+            onChange={(event) => onFilterChange(event.target.value)}
+            className="h-10 w-full rounded-md border border-[#d8e2d5] bg-white px-3 text-sm outline-none focus:border-[#245b35] sm:min-w-[180px]"
+          >
+            {filterOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-[#6a7669]">Sort by</span>
+          <select
+            value={sortValue}
+            onChange={(event) => onSortChange(event.target.value)}
+            className="h-10 w-full rounded-md border border-[#d8e2d5] bg-white px-3 text-sm outline-none focus:border-[#245b35] sm:min-w-[180px]"
+          >
+            {sortOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+    </div>
+  );
+}
+
 function TargetCards({ totals, targets }: { totals: Targets; targets: Targets | null }) {
   const items = [
     { key: "targetCalories", label: "Calories", actual: totals.targetCalories, unit: "kcal", icon: Activity },
@@ -1303,21 +1371,40 @@ function Admin({ data }: { data: DashboardData }) {
         <div className="grid gap-3 sm:grid-cols-2"><StatCard label="Users" value={`${data.adminMetrics.totalUsers}`} helper="User accounts" icon={Users} /><StatCard label="Admins" value={`${data.adminMetrics.totalAdmins}`} helper="Admin accounts" icon={ShieldCheck} /><StatCard label="Avg calories" value={round(data.adminMetrics.avgCalories, 0)} helper="Average per food log" icon={Activity} /><StatCard label="High BP records" value={`${data.adminMetrics.highBpCount}`} helper=">= 130/80" icon={HeartPulse} /></div>
         <form action={action} className="rounded-lg border border-[#dbe5d8] bg-white p-4">
           <h2 className="font-semibold">Create user</h2>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <Field name="name" label="Name" required />
-            <Field name="email" label="Email" type="email" required />
-            <Field name="mobileNumber" label="Mobile number" required />
-            <Field name="pin" label="4 digit PIN" required />
-            <label><span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[#6a7669]">Role</span><select name="role" className="h-10 w-full rounded-md border border-[#d8e2d5] bg-white px-3 text-sm"><option value="USER">User</option><option value="ADMIN">Admin</option></select></label>
-            <Field name="startDate" label="Start date" type="date" defaultValue={today} required />
-            <Field name="age" label="Age" type="number" />
-            <Field name="gender" label="Gender" />
-            <Field name="conditions" label="Conditions" />
-            <Field name="targetEffectiveFrom" label="Target effective from" type="date" defaultValue={today} required />
-            <Field name="targetCalories" label="Target calories" type="number" step="0.1" defaultValue="2000" required />
-            <Field name="targetCarbs" label="Target carbs" type="number" step="0.1" defaultValue="80" required />
-            <Field name="targetProteins" label="Target proteins" type="number" step="0.1" defaultValue="60" required />
-            <Field name="targetFats" label="Target fats" type="number" step="0.1" defaultValue="150" required />
+          <div className="mt-4 space-y-4">
+            <section className="rounded-lg border border-[#e4ece1] bg-[#f9fbf8] p-4">
+              <div className="mb-4">
+                <h3 className="text-sm font-semibold uppercase tracking-[0.14em] text-[#4f7f5d]">User details</h3>
+                <p className="mt-1 text-sm text-[#6a7669]">Basic account, profile, and access information.</p>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field name="name" label="Name" required />
+                <Field name="email" label="Email" type="email" required />
+                <Field name="mobileNumber" label="Mobile number" required />
+                <Field name="pin" label="4 digit PIN" required />
+                <label><span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[#6a7669]">Role</span><select name="role" className="h-10 w-full rounded-md border border-[#d8e2d5] bg-white px-3 text-sm"><option value="USER">User</option><option value="ADMIN">Admin</option></select></label>
+                <Field name="startDate" label="Start date" type="date" defaultValue={today} required />
+                <Field name="age" label="Age" type="number" />
+                <Field name="gender" label="Gender" />
+                <div className="sm:col-span-2">
+                  <Field name="conditions" label="Conditions" />
+                </div>
+              </div>
+            </section>
+
+            <section className="rounded-lg border border-[#e4ece1] bg-[#f9fbf8] p-4">
+              <div className="mb-4">
+                <h3 className="text-sm font-semibold uppercase tracking-[0.14em] text-[#4f7f5d]">Target details</h3>
+                <p className="mt-1 text-sm text-[#6a7669]">Initial nutrition goals that will apply from the selected effective date.</p>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field name="targetEffectiveFrom" label="Target effective from" type="date" defaultValue={today} required />
+                <Field name="targetCalories" label="Target calories" type="number" step="0.1" defaultValue="2000" required />
+                <Field name="targetCarbs" label="Target carbs" type="number" step="0.1" defaultValue="80" required />
+                <Field name="targetProteins" label="Target proteins" type="number" step="0.1" defaultValue="60" required />
+                <Field name="targetFats" label="Target fats" type="number" step="0.1" defaultValue="150" required />
+              </div>
+            </section>
           </div>
           <div className="mt-4"><ActionMessage state={state} /></div>
           <button className="mt-4 h-10 rounded-md bg-[#245b35] px-4 text-sm font-semibold text-white">Create user</button>

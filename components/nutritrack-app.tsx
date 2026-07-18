@@ -17,6 +17,17 @@ import {
   UserRound,
   Users,
 } from "lucide-react";
+import {
+  CartesianGrid,
+  Legend,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import type { NameType, ValueType } from "recharts/types/component/DefaultTooltipContent";
 import { InstallAppButton } from "@/components/install-app-button";
 import {
   createUser,
@@ -26,7 +37,6 @@ import {
   saveFoodLog,
   saveMedicalRecord,
   saveNutritionTarget,
-  seedMasterFoods,
   signOut,
   updatePin,
   updateProfile,
@@ -171,6 +181,51 @@ function downloadCsv(filename: string, rows: (string | number | null)[][]) {
   URL.revokeObjectURL(url);
 }
 
+function formatTooltipValue(value: ValueType | undefined) {
+  if (Array.isArray(value)) {
+    return value.join(", ");
+  }
+
+  return value;
+}
+
+function nutritionTooltipFormatter(value: ValueType | undefined, name: NameType | undefined) {
+  const labelMap: Record<string, string> = {
+    carbs: "Carbs",
+    proteins: "Proteins",
+    fats: "Fats",
+    calories: "Calories",
+    targetCalories: "Target calories",
+  };
+
+  const normalizedName = String(name ?? "Value");
+  const normalizedValue = formatTooltipValue(value);
+  const isCalories = ["calories", "targetCalories", "Calories", "Target calories"].includes(normalizedName);
+  const formatted =
+    typeof normalizedValue === "number"
+      ? round(normalizedValue, isCalories ? 0 : 1)
+      : normalizedValue ?? "-";
+  const suffix = isCalories ? " kcal" : " g";
+
+  return [`${formatted}${suffix}`, labelMap[normalizedName] ?? normalizedName];
+}
+
+function biometricTooltipFormatter(value: ValueType | undefined, name: NameType | undefined) {
+  const labelMap: Record<string, string> = {
+    bmi: "BMI",
+    weight: "Weight",
+    bpHigh: "BP High",
+    bpLow: "BP Low",
+  };
+
+  const normalizedName = String(name ?? "Value");
+  const normalizedValue = formatTooltipValue(value);
+  const suffix = normalizedName === "weight" || normalizedName === "Weight" ? " kg" : "";
+  const formatted = typeof normalizedValue === "number" ? round(normalizedValue) : normalizedValue ?? "-";
+
+  return [`${formatted}${suffix}`, labelMap[normalizedName] ?? normalizedName];
+}
+
 function resolveTargetForDate(targets: TargetProfile[], date: string): Targets | null {
   const sorted = [...targets].sort((a, b) => a.effectiveFrom.localeCompare(b.effectiveFrom));
   let chosen: TargetProfile | null = null;
@@ -265,6 +320,24 @@ function ActionMessage({ state }: { state: ActionState }) {
   return <p className={`rounded-md px-3 py-2 text-sm ${state.ok ? "bg-[#edf7ec] text-[#245b35]" : "bg-[#fff4e8] text-[#8a4a12]"}`}>{state.message}</p>;
 }
 
+function MiniMetric({
+  label,
+  value,
+  helper,
+}: {
+  label: string;
+  value: string;
+  helper: string;
+}) {
+  return (
+    <div className="rounded-lg border border-[#e4ece1] bg-[#f9fbf8] p-3">
+      <p className="text-xs font-semibold uppercase tracking-wide text-[#6a7669]">{label}</p>
+      <p className="mt-2 text-lg font-semibold text-[#172117]">{value}</p>
+      <p className="mt-1 text-xs text-[#6a7669]">{helper}</p>
+    </div>
+  );
+}
+
 function StatCard({ label, value, helper, icon: Icon }: { label: string; value: string; helper: string; icon: typeof Activity }) {
   return (
     <div className="rounded-lg border border-[#dbe5d8] bg-white p-4">
@@ -287,19 +360,60 @@ function TargetCards({ totals, targets }: { totals: Targets; targets: Targets | 
   ] as const;
 
   return (
-    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
       {items.map((item) => {
         const targetValue = targets ? targets[item.key] : 0;
-        const progress = targetValue > 0 ? Math.min((item.actual / targetValue) * 100, 999) : 0;
+        const progress = targetValue > 0 ? (item.actual / targetValue) * 100 : 0;
+        const displayProgress = Math.max(0, Math.min(progress, 100));
+        const radius = 28;
+        const circumference = 2 * Math.PI * radius;
+        const offset = circumference - (displayProgress / 100) * circumference;
+        const toneClass = progress > 100 ? "text-[#b14646]" : "text-[#245b35]";
+        const strokeColor = progress > 100 ? "#b14646" : "#245b35";
+
         return (
           <div key={item.key} className="rounded-lg border border-[#dbe5d8] bg-white p-4">
             <div className="flex items-center justify-between gap-2">
               <span className="text-sm font-medium text-[#5b685a]">{item.label}</span>
               <item.icon className="size-4 text-[#4f7f5d]" />
             </div>
-            <p className="mt-3 text-2xl font-semibold">{round(item.actual, item.unit === "kcal" ? 0 : 1)}{item.unit}</p>
-            <p className="mt-1 text-xs text-[#6a7669]">Target {targetValue ? `${round(targetValue, item.unit === "kcal" ? 0 : 1)}${item.unit}` : "not set"}</p>
-            <div className="mt-3 h-2 overflow-hidden rounded-full bg-[#e5eee2]"><div className={`h-full rounded-full ${progress > 100 ? "bg-[#bf5a4c]" : "bg-[#4f7f5d]"}`} style={{ width: `${Math.min(progress, 100)}%` }} /></div>
+
+            <div className="mt-4 flex items-center gap-4">
+              <svg width="84" height="84" viewBox="0 0 84 84" className="shrink-0">
+                <circle cx="42" cy="42" r={radius} fill="none" stroke="#e5eee2" strokeWidth="8" />
+                <circle
+                  cx="42"
+                  cy="42"
+                  r={radius}
+                  fill="none"
+                  stroke={strokeColor}
+                  strokeWidth="8"
+                  strokeLinecap="round"
+                  strokeDasharray={circumference}
+                  strokeDashoffset={offset}
+                  transform="rotate(-90 42 42)"
+                />
+                <text x="42" y="40" textAnchor="middle" className="fill-[#172117] text-[15px] font-semibold">
+                  {Math.round(displayProgress)}%
+                </text>
+                <text x="42" y="54" textAnchor="middle" className="fill-[#6a7669] text-[10px] font-medium">
+                  of goal
+                </text>
+              </svg>
+
+              <div className="min-w-0 flex-1">
+                <p className="text-2xl font-semibold text-[#172117]">
+                  {round(item.actual, item.unit === "kcal" ? 0 : 1)}
+                  {item.unit}
+                </p>
+                <p className="mt-1 text-xs text-[#6a7669]">
+                  Target {targetValue ? `${round(targetValue, item.unit === "kcal" ? 0 : 1)}${item.unit}` : "not set"}
+                </p>
+                <p className={`mt-2 text-sm font-semibold ${toneClass}`}>
+                  {targetValue ? `${round(progress, 0)}% reached` : "Set a target to track progress"}
+                </p>
+              </div>
+            </div>
           </div>
         );
       })}
@@ -520,37 +634,252 @@ function Medical({ data }: { data: DashboardData }) {
 }
 
 function Graphs({ data }: { data: DashboardData }) {
-  const daily = useMemo(() => {
-    const map = new Map<string, { calories: number; carbs: number; proteins: number; fats: number }>();
-    data.foodLogs.forEach((log) => {
-      const row = map.get(log.date) ?? { calories: 0, carbs: 0, proteins: 0, fats: 0 };
-      row.calories += log.calories; row.carbs += log.carbs; row.proteins += log.proteins; row.fats += log.fats; map.set(log.date, row);
-    });
-    return Array.from(map.entries()).map(([date, values]) => ({ date, ...values })).sort((a, b) => a.date.localeCompare(b.date)).slice(-12);
-  }, [data.foodLogs]);
+  const nutritionSeries = useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        date: string;
+        label: string;
+        calories: number;
+        carbs: number;
+        proteins: number;
+        fats: number;
+        proteinCarbRatioTotal: number;
+        ratioCount: number;
+        targetCalories: number | null;
+      }
+    >();
 
-  const maxCalories = Math.max(1, ...daily.map((item) => item.calories));
+    for (const log of data.foodLogs) {
+      const existing =
+        map.get(log.date) ??
+        {
+          date: log.date,
+          label: log.displayDate,
+          calories: 0,
+          carbs: 0,
+          proteins: 0,
+          fats: 0,
+          proteinCarbRatioTotal: 0,
+          ratioCount: 0,
+          targetCalories: resolveTargetForDate(data.targetProfiles, log.date)?.targetCalories ?? null,
+        };
+
+      existing.calories += log.calories;
+      existing.carbs += log.carbs;
+      existing.proteins += log.proteins;
+      existing.fats += log.fats;
+
+      if (typeof log.proteinCarbRatio === "number" && Number.isFinite(log.proteinCarbRatio)) {
+        existing.proteinCarbRatioTotal += log.proteinCarbRatio;
+        existing.ratioCount += 1;
+      }
+
+      map.set(log.date, existing);
+    }
+
+    return Array.from(map.values())
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .map((entry) => ({
+        ...entry,
+        proteinCarbRatio:
+          entry.ratioCount > 0 ? Number((entry.proteinCarbRatioTotal / entry.ratioCount).toFixed(1)) : null,
+      }));
+  }, [data.foodLogs, data.targetProfiles]);
+
+  const biometricSeries = useMemo(
+    () =>
+      [...data.medicalRecords]
+        .sort((a, b) => a.date.localeCompare(b.date))
+        .map((record) => ({
+          date: record.date,
+          label: record.displayDate,
+          bmi: record.bmi,
+          weight: record.weight,
+          bpLow: record.bpLow,
+          bpHigh: record.bpHigh,
+        })),
+    [data.medicalRecords],
+  );
+
+  const latestNutrition = nutritionSeries.at(-1) ?? null;
+  const latestMedical = biometricSeries.at(-1) ?? null;
 
   return (
-    <div className="grid gap-5 lg:grid-cols-[1fr_0.82fr]">
-      <section className="rounded-lg border border-[#dbe5d8] bg-white p-4">
-        <h2 className="font-semibold">Recent daily nutrition trend</h2>
-        <p className="mt-1 text-sm text-[#6a7669]">Latest 12 tracked days.</p>
-        <div className="mt-5 space-y-4">
-          {daily.length === 0 ? <p className="text-sm text-[#6a7669]">No data yet.</p> : daily.map((item) => (
-            <div key={item.date}>
-              <div className="mb-1 flex items-center justify-between gap-3 text-sm"><span>{item.date}</span><span>{round(item.calories, 0)} kcal</span></div>
-              <div className="h-3 rounded-full bg-[#e5eee2]"><div className="h-3 rounded-full bg-[#4f7f5d]" style={{ width: `${Math.max(4, (item.calories / maxCalories) * 100)}%` }} /></div>
-              <div className="mt-2 grid grid-cols-3 gap-2 text-xs text-[#6a7669] sm:grid-cols-4"><span>Carbs {round(item.carbs)}g</span><span>Proteins {round(item.proteins)}g</span><span>Fats {round(item.fats)}g</span></div>
+    <div className="space-y-5">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard
+          label="Days tracked"
+          value={`${data.selectedUser.daysTracked}`}
+          helper="Distinct food-log days"
+          icon={Activity}
+        />
+        <StatCard
+          label="Tracking rate"
+          value={`${Math.round(data.selectedUser.trackingRate)}%`}
+          helper="Food tracked over total days on app"
+          icon={BarChart3}
+        />
+        <StatCard
+          label="Active target calories"
+          value={data.selectedUser.activeTargets ? round(data.selectedUser.activeTargets.targetCalories, 0) : "-"}
+          helper="Latest target profile"
+          icon={Apple}
+        />
+        <StatCard
+          label="Latest BMI"
+          value={latestMedical ? round(latestMedical.bmi) : "-"}
+          helper={latestMedical ? `Recorded on ${latestMedical.label}` : "No biometric records yet"}
+          icon={HeartPulse}
+        />
+      </div>
+
+      <div className="grid gap-5 xl:grid-cols-2">
+        <section className="rounded-lg border border-[#dbe5d8] bg-white p-4">
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h2 className="font-semibold">Nutrition trend</h2>
+              <p className="text-sm text-[#6a7669]">
+                Dual-axis line chart showing daily nutrient grams and calories over time.
+              </p>
             </div>
-          ))}
-        </div>
-      </section>
-      <section className="space-y-4">
-        <StatCard label="Days tracked" value={`${data.selectedUser.daysTracked}`} helper="Distinct food-log days" icon={Activity} />
-        <StatCard label="Tracking rate" value={`${Math.round(data.selectedUser.trackingRate)}%`} helper="Food tracked over total days on app" icon={BarChart3} />
-        <StatCard label="Active target calories" value={data.selectedUser.activeTargets ? round(data.selectedUser.activeTargets.targetCalories, 0) : "-"} helper="Latest target profile" icon={Apple} />
-      </section>
+            {latestNutrition ? (
+              <p className="text-xs text-[#6a7669]">
+                Latest: {latestNutrition.label} - {round(latestNutrition.calories, 0)} kcal
+              </p>
+            ) : null}
+          </div>
+
+          {nutritionSeries.length === 0 ? (
+            <div className="mt-6 rounded-lg border border-dashed border-[#d8e2d5] bg-[#f9fbf8] p-6 text-sm text-[#6a7669]">
+              Add food logs to see nutrient and calorie trends here.
+            </div>
+          ) : (
+            <>
+              <div className="mt-5 h-[320px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={nutritionSeries} margin={{ top: 8, right: 12, left: 0, bottom: 8 }}>
+                    <CartesianGrid stroke="#e7eee4" strokeDasharray="4 4" />
+                    <XAxis dataKey="label" tick={{ fontSize: 12, fill: "#6a7669" }} minTickGap={24} />
+                    <YAxis
+                      yAxisId="grams"
+                      tick={{ fontSize: 12, fill: "#6a7669" }}
+                      tickFormatter={(value: number) => `${value}g`}
+                      width={52}
+                    />
+                    <YAxis
+                      yAxisId="calories"
+                      orientation="right"
+                      tick={{ fontSize: 12, fill: "#6a7669" }}
+                      tickFormatter={(value: number) => `${value}`}
+                      width={44}
+                    />
+                    <Tooltip
+                      contentStyle={{ borderRadius: 12, borderColor: "#d8e2d5" }}
+                      formatter={nutritionTooltipFormatter}
+                      labelFormatter={(label) => `Date: ${label}`}
+                    />
+                    <Legend />
+                    <Line yAxisId="grams" type="monotone" dataKey="carbs" name="Carbs" stroke="#4f7f5d" strokeWidth={2.5} dot={{ r: 2 }} activeDot={{ r: 5 }} />
+                    <Line yAxisId="grams" type="monotone" dataKey="proteins" name="Proteins" stroke="#245b35" strokeWidth={2.5} dot={{ r: 2 }} activeDot={{ r: 5 }} />
+                    <Line yAxisId="grams" type="monotone" dataKey="fats" name="Fats" stroke="#c78b46" strokeWidth={2.5} dot={{ r: 2 }} activeDot={{ r: 5 }} />
+                    <Line yAxisId="calories" type="monotone" dataKey="calories" name="Calories" stroke="#1b4965" strokeWidth={3} dot={{ r: 2 }} activeDot={{ r: 5 }} />
+                    <Line yAxisId="calories" type="monotone" dataKey="targetCalories" name="Target calories" stroke="#9aa79b" strokeDasharray="6 6" strokeWidth={2} dot={false} connectNulls />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                <MiniMetric
+                  label="Latest protein/carb ratio"
+                  value={latestNutrition?.proteinCarbRatio != null ? round(latestNutrition.proteinCarbRatio) : "-"}
+                  helper="Average across that day's logged entries"
+                />
+                <MiniMetric
+                  label="Latest proteins"
+                  value={latestNutrition ? `${round(latestNutrition.proteins)} g` : "-"}
+                  helper="Total proteins on latest tracked day"
+                />
+                <MiniMetric
+                  label="Latest carbs"
+                  value={latestNutrition ? `${round(latestNutrition.carbs)} g` : "-"}
+                  helper="Total carbs on latest tracked day"
+                />
+              </div>
+            </>
+          )}
+        </section>
+
+        <section className="rounded-lg border border-[#dbe5d8] bg-white p-4">
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h2 className="font-semibold">Biometric trend</h2>
+              <p className="text-sm text-[#6a7669]">
+                Dual-axis line chart for BMI, weight, and blood pressure history.
+              </p>
+            </div>
+            {latestMedical ? (
+              <p className="text-xs text-[#6a7669]">
+                Latest: {latestMedical.label} - BMI {round(latestMedical.bmi)}
+              </p>
+            ) : null}
+          </div>
+
+          {biometricSeries.length === 0 ? (
+            <div className="mt-6 rounded-lg border border-dashed border-[#d8e2d5] bg-[#f9fbf8] p-6 text-sm text-[#6a7669]">
+              Add medical records to see biometric trends here.
+            </div>
+          ) : (
+            <>
+              <div className="mt-5 h-[320px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={biometricSeries} margin={{ top: 8, right: 12, left: 0, bottom: 8 }}>
+                    <CartesianGrid stroke="#e7eee4" strokeDasharray="4 4" />
+                    <XAxis dataKey="label" tick={{ fontSize: 12, fill: "#6a7669" }} minTickGap={24} />
+                    <YAxis
+                      yAxisId="body"
+                      tick={{ fontSize: 12, fill: "#6a7669" }}
+                      width={44}
+                    />
+                    <YAxis
+                      yAxisId="bp"
+                      orientation="right"
+                      tick={{ fontSize: 12, fill: "#6a7669" }}
+                      width={44}
+                    />
+                    <Tooltip
+                      contentStyle={{ borderRadius: 12, borderColor: "#d8e2d5" }}
+                      formatter={biometricTooltipFormatter}
+                      labelFormatter={(label) => `Date: ${label}`}
+                    />
+                    <Legend />
+                    <Line yAxisId="body" type="monotone" dataKey="bmi" name="BMI" stroke="#245b35" strokeWidth={3} dot={{ r: 2 }} activeDot={{ r: 5 }} />
+                    <Line yAxisId="body" type="monotone" dataKey="weight" name="Weight" stroke="#4f7f5d" strokeWidth={2.5} dot={{ r: 2 }} activeDot={{ r: 5 }} />
+                    <Line yAxisId="bp" type="monotone" dataKey="bpHigh" name="BP High" stroke="#b55252" strokeWidth={2.5} dot={{ r: 2 }} activeDot={{ r: 5 }} />
+                    <Line yAxisId="bp" type="monotone" dataKey="bpLow" name="BP Low" stroke="#e18f3f" strokeWidth={2.5} dot={{ r: 2 }} activeDot={{ r: 5 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                <MiniMetric
+                  label="Latest BP"
+                  value={latestMedical ? `${round(latestMedical.bpHigh, 0)}/${round(latestMedical.bpLow, 0)}` : "-"}
+                  helper="Most recent medical entry"
+                />
+                <MiniMetric
+                  label="Latest weight"
+                  value={latestMedical ? `${round(latestMedical.weight)} kg` : "-"}
+                  helper="Most recent medical entry"
+                />
+                <MiniMetric
+                  label="Total records"
+                  value={`${biometricSeries.length}`}
+                  helper="Medical history points available"
+                />
+              </div>
+            </>
+          )}
+        </section>
+      </div>
     </div>
   );
 }
@@ -738,3 +1067,5 @@ export function NutriTrackApp({ data }: { data: DashboardData }) {
     </Shell>
   );
 }
+
+

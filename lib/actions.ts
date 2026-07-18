@@ -89,18 +89,26 @@ export async function signIn(_state: ActionState, formData: FormData): Promise<A
     ? { email: identifier }
     : { mobileNumber: identifier };
 
-  const user = await prisma.user.findFirst({ where });
+  try {
+    const user = await prisma.user.findFirst({ where });
 
-  if (!user || !(await bcrypt.compare(parsed.data.pin, user.pinHash))) {
-    return { message: "Email/mobile or PIN is incorrect." };
+    if (!user || !(await bcrypt.compare(parsed.data.pin, user.pinHash))) {
+      return { message: "Email/mobile or PIN is incorrect." };
+    }
+
+    await createSession({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+    });
+  } catch (error) {
+    console.error("Sign in failed", error);
+    return {
+      message:
+        "Unable to connect to the database right now. If you are on a corporate network, check your proxy/certificate settings and try again.",
+    };
   }
-
-  await createSession({
-    id: user.id,
-    email: user.email,
-    name: user.name,
-    role: user.role,
-  });
 
   redirect("/dashboard");
 }

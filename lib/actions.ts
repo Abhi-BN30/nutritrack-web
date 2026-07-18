@@ -53,6 +53,14 @@ function calculateProteinCarbRatio(proteins: number, carbs: number) {
   return Math.round((proteins / carbs) * 10) / 10;
 }
 
+function convertQuantityToGrams(quantityValue: number, quantityMetric: "GRAMS" | "ML" | "INTEGER") {
+  if (quantityMetric === "INTEGER") {
+    return quantityValue * 100;
+  }
+
+  return quantityValue;
+}
+
 function actionError(error: unknown, fallback: string): ActionState {
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
     if (error.code === "P2002") {
@@ -416,7 +424,8 @@ export async function saveFoodLog(_state: ActionState, formData: FormData): Prom
     foodItemId: formValue(formData, "foodItemId"),
     date: formValue(formData, "date"),
     dishName: formValue(formData, "dishName") || "Meal",
-    quantityGms: formValue(formData, "quantityGms"),
+    quantityValue: formValue(formData, "quantityValue"),
+    quantityMetric: formValue(formData, "quantityMetric") || "GRAMS",
   });
 
   if (!parsed.success) {
@@ -429,7 +438,8 @@ export async function saveFoodLog(_state: ActionState, formData: FormData): Prom
     return { message: "Selected food item was not found." };
   }
 
-  const scale = parsed.data.quantityGms / 100;
+  const quantityGms = convertQuantityToGrams(parsed.data.quantityValue, parsed.data.quantityMetric);
+  const scale = quantityGms / 100;
   const proteins = food.proteins * scale;
   const carbs = food.carbohydrates * scale;
   const fats = food.fats * scale;
@@ -450,7 +460,7 @@ export async function saveFoodLog(_state: ActionState, formData: FormData): Prom
           foodItemId: food.id,
           date: startOfDay(parsed.data.date),
           dishName: parsed.data.dishName,
-          quantityGms: parsed.data.quantityGms,
+          quantityGms,
           carbs,
           proteins,
           fats,
@@ -469,7 +479,7 @@ export async function saveFoodLog(_state: ActionState, formData: FormData): Prom
         foodItemId: food.id,
         date: startOfDay(parsed.data.date),
         dishName: parsed.data.dishName,
-        quantityGms: parsed.data.quantityGms,
+        quantityGms,
         carbs,
         proteins,
         fats,

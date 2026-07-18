@@ -88,5 +88,6 @@ export const foodLogSchema = z.object({
   foodItemId: z.string().min(1),
   date: z.coerce.date(),
   dishName: z.string().min(1).trim().default("Meal"),
-  quantityGms: z.coerce.number().positive(),
+  quantityValue: z.coerce.number().positive(),
+  quantityMetric: z.enum(["GRAMS", "ML", "INTEGER"]).default("GRAMS"),
 });

@@ -621,6 +621,7 @@ function Tracker({ data }: { data: DashboardData }) {
   const [showAllLogs, setShowAllLogs] = useState(false);
   const [search, setSearch] = useState("");
   const [editingLog, setEditingLog] = useState<FoodLog | null>(null);
+  const [quantityMetric, setQuantityMetric] = useState<"GRAMS" | "ML" | "INTEGER">("GRAMS");
 
   const selectedDateLogs = useMemo(() => data.foodLogs.filter((log) => log.date === selectedDate), [data.foodLogs, selectedDate]);
   const visibleLogs = useMemo(() => {
@@ -646,6 +647,13 @@ function Tracker({ data }: { data: DashboardData }) {
   );
 
   const targetForSelectedDate = resolveTargetForDate(data.targetProfiles, selectedDate);
+
+  useEffect(() => {
+    setQuantityMetric("GRAMS");
+  }, [editingLog?.id]);
+
+  const quantityLabel = quantityMetric === "GRAMS" ? "Quantity grams" : quantityMetric === "ML" ? "Quantity ml" : "Quantity count";
+  const quantityStep = quantityMetric === "INTEGER" ? "1" : "0.1";
 
   return (
     <div className="space-y-5">
@@ -674,7 +682,7 @@ function Tracker({ data }: { data: DashboardData }) {
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
                 <h2 className="font-semibold">{editingLog ? "Edit food log" : "Add food log"}</h2>
-                <p className="text-sm text-[#6a7669]">Protein/carb ratio is calculated automatically from the selected food and quantity.</p>
+                <p className="text-sm text-[#6a7669]">Protein/carb ratio is calculated automatically from the selected food and metric-based quantity. Integer entries are treated as 1 serving = 100g, and ml entries are treated as ml-to-gram equivalents.</p>
               </div>
               {editingLog ? <button type="button" onClick={() => setEditingLog(null)} className="rounded-md border border-[#d8e2d5] px-3 py-2 text-sm font-medium hover:bg-[#f4f7f2]">Cancel edit</button> : null}
             </div>
@@ -688,7 +696,15 @@ function Tracker({ data }: { data: DashboardData }) {
               </label>
               <Field name="date" label="Date" type="date" defaultValue={editingLog?.date ?? selectedDate} required />
               <Field name="dishName" label="Dish / meal" defaultValue={editingLog?.dishName ?? "Meal"} required />
-              <Field name="quantityGms" label="Quantity grams" type="number" step="0.1" defaultValue={editingLog?.quantityGms ?? ""} required />
+              <label>
+                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[#6a7669]">Metric</span>
+                <select name="quantityMetric" value={quantityMetric} onChange={(e) => setQuantityMetric(e.target.value as "GRAMS" | "ML" | "INTEGER")} className="h-10 w-full rounded-md border border-[#d8e2d5] bg-white px-3 text-sm">
+                  <option value="GRAMS">Grams</option>
+                  <option value="ML">ML</option>
+                  <option value="INTEGER">Integer</option>
+                </select>
+              </label>
+              <Field name="quantityValue" label={quantityLabel} type="number" step={quantityStep} defaultValue={editingLog?.quantityGms ?? ""} required />
             </div>
             <div className="mt-4"><ActionMessage state={state} /></div>
             <button className="mt-4 h-10 rounded-md bg-[#245b35] px-4 text-sm font-semibold text-white">{editingLog ? "Update log" : "Save log"}</button>
@@ -713,7 +729,7 @@ function Tracker({ data }: { data: DashboardData }) {
             <table className="w-full min-w-[920px] text-sm">
               <thead className="bg-[#f4f8f2] text-left">
                 <tr>
-                  <th className="p-3">Date</th><th className="p-3">Dish</th><th className="p-3">Food item</th><th className="p-3">Qty (g)</th><th className="p-3">Carbs</th><th className="p-3">Proteins</th><th className="p-3">Fats</th><th className="p-3">Calories</th><th className="p-3">Protein/Carb ratio</th><th className="p-3">Actions</th>
+                  <th className="p-3">Date</th><th className="p-3">Dish</th><th className="p-3">Food item</th><th className="p-3">Qty (g equiv.)</th><th className="p-3">Carbs</th><th className="p-3">Proteins</th><th className="p-3">Fats</th><th className="p-3">Calories</th><th className="p-3">Protein/Carb ratio</th><th className="p-3">Actions</th>
                 </tr>
               </thead>
               <tbody>

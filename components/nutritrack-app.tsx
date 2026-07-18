@@ -540,7 +540,7 @@ function Shell({ data, tab, setTab, children }: { data: DashboardData; tab: Tab;
   const headerHighlights = getHeaderHighlights(tab, data);
 
   return (
-    <main className="min-h-screen bg-[#f7faf5] text-[#172117]">
+    <main className="min-h-screen overflow-x-hidden bg-[#f7faf5] text-[#172117]">
       <header className="sticky top-0 z-20 border-b border-[#dbe5d8] bg-white/95 backdrop-blur">
         <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-3">
@@ -550,7 +550,7 @@ function Shell({ data, tab, setTab, children }: { data: DashboardData; tab: Tab;
               <p className="text-xs text-[#6a7669]">{data.currentUser.role === "ADMIN" ? "Admin workspace" : "User workspace"}</p>
             </div>
           </div>
-          <nav className="flex gap-1 overflow-x-auto pb-1 lg:pb-0">
+          <nav className="flex w-full gap-1 overflow-x-auto pb-1 lg:w-auto lg:pb-0">
             {tabs.filter((item) => !item.adminOnly || data.currentUser.role === "ADMIN").map((item) => (
               <button key={item.id} onClick={() => setTab(item.id)} className={`flex h-10 items-center gap-2 rounded-md px-3 text-sm font-medium whitespace-nowrap ${tab === item.id ? "bg-[#245b35] text-white" : "text-[#4d5b4c] hover:bg-[#edf3ea]"}`}>
                 <item.icon className="size-4" />{item.label}
@@ -564,16 +564,16 @@ function Shell({ data, tab, setTab, children }: { data: DashboardData; tab: Tab;
         </div>
       </header>
       <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6">
-        <section className="mb-5 grid gap-4 xl:grid-cols-[1.05fr_1.25fr]">
+        <section className="mb-5 grid gap-4 2xl:grid-cols-[1.05fr_1.25fr]">
           <div className="rounded-lg border border-[#dbe5d8] bg-white p-4">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#4f7f5d]">Viewing</p>
             <h1 className="mt-1 text-2xl font-semibold">{data.selectedUser.name}</h1>
-            <p className="mt-1 text-sm text-[#6a7669]">
+            <p className="mt-1 break-all text-sm text-[#6a7669]">
               {activeTab.label} overview for {data.selectedUser.email}
             </p>
             {data.currentUser.role === "ADMIN" ? <div className="mt-4 flex flex-wrap gap-2">{data.users.map((user) => <a key={user.id} href={`/dashboard?userId=${user.id}`} className={`rounded-md border px-3 py-2 text-sm ${user.id === data.selectedUser.id ? "border-[#245b35] bg-[#edf7ec] text-[#245b35]" : "border-[#d8e2d5] hover:bg-[#f4f7f2]"}`}>{user.name}</a>)}</div> : null}
           </div>
-          <div className="rounded-lg border border-[#dbe5d8] bg-white p-4">
+          <div className="min-w-0 rounded-lg border border-[#dbe5d8] bg-white p-4">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#4f7f5d]">Page highlights</p>
             <h2 className="mt-1 font-semibold">{activeTab.label} specific metrics</h2>
             {tab === "tracker" ? (
@@ -581,7 +581,7 @@ function Shell({ data, tab, setTab, children }: { data: DashboardData; tab: Tab;
                 <div className="rounded-lg border border-[#e4ece1] bg-[#f9fbf8] px-3 py-2">
                   <DonutChart percent={data.selectedUser.trackingRate} label={`${data.selectedUser.daysTracked} tracked / ${data.selectedUser.daysOnApp} days`} />
                 </div>
-                <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
+                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
                   {headerHighlights.map((highlight) => (
                     <div key={highlight.label} className="rounded-lg border border-[#e4ece1] bg-[#f9fbf8] px-3 py-2.5">
                       <div className="flex items-center justify-between gap-2">
@@ -595,7 +595,7 @@ function Shell({ data, tab, setTab, children }: { data: DashboardData; tab: Tab;
                 </div>
               </div>
             ) : (
-              <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
                 {headerHighlights.map((highlight) => (
                   <div key={highlight.label} className="rounded-lg border border-[#e4ece1] bg-[#f9fbf8] px-3 py-2.5">
                     <div className="flex items-center justify-between gap-2">
@@ -657,8 +657,8 @@ function Tracker({ data }: { data: DashboardData }) {
 
   return (
     <div className="space-y-5">
-      <div className="grid gap-5 xl:grid-cols-[0.95fr_1.05fr]">
-        <section className="space-y-4">
+      <div className="grid gap-5 2xl:grid-cols-[0.95fr_1.05fr]">
+        <section className="min-w-0 space-y-4">
           <div className="rounded-lg border border-[#dbe5d8] bg-white p-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div>
@@ -711,7 +711,7 @@ function Tracker({ data }: { data: DashboardData }) {
           </form>
         </section>
 
-        <section className="rounded-lg border border-[#dbe5d8] bg-white">
+        <section className="min-w-0 rounded-lg border border-[#dbe5d8] bg-white">
           <div className="border-b border-[#e4ece1] p-4">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div>
@@ -725,7 +725,32 @@ function Tracker({ data }: { data: DashboardData }) {
             </div>
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search dish or food item" className="mt-3 h-10 w-full rounded-md border border-[#d8e2d5] bg-white px-3 text-sm outline-none focus:border-[#245b35]" />
           </div>
-          <div className="overflow-x-auto">
+          <div className="space-y-3 p-4 lg:hidden">
+            {visibleLogs.length === 0 ? <p className="rounded-lg border border-dashed border-[#d8e2d5] bg-[#f9fbf8] p-4 text-center text-sm text-[#6a7669]">No food logs found.</p> : visibleLogs.map((log) => (
+              <article key={log.id} className="rounded-lg border border-[#e4ece1] bg-[#f9fbf8] p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="font-medium text-[#172117]">{log.dishName}</p>
+                    <p className="text-sm text-[#6a7669]">{log.displayDate}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => { setEditingLog(log); setSelectedDate(log.date); }} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]"><Pencil className="size-4" /></button>
+                    <form action={deleteFoodLog}><input type="hidden" name="id" value={log.id} /><button className="rounded-md border border-[#ead0cb] p-2 text-[#a13f32] hover:bg-[#fff4f2]"><Trash2 className="size-4" /></button></form>
+                  </div>
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-3 text-sm text-[#4d5b4c]">
+                  <p><span className="font-medium text-[#172117]">Food:</span> {log.foodItem}</p>
+                  <p><span className="font-medium text-[#172117]">Qty:</span> {round(log.quantityGms, 0)} g eq.</p>
+                  <p><span className="font-medium text-[#172117]">Carbs:</span> {round(log.carbs)}g</p>
+                  <p><span className="font-medium text-[#172117]">Proteins:</span> {round(log.proteins)}g</p>
+                  <p><span className="font-medium text-[#172117]">Fats:</span> {round(log.fats)}g</p>
+                  <p><span className="font-medium text-[#172117]">Calories:</span> {round(log.calories, 0)}</p>
+                </div>
+                <p className="mt-3 text-sm text-[#4d5b4c]"><span className="font-medium text-[#172117]">Protein/Carb ratio:</span> {log.proteinCarbRatio === null ? "-" : round(log.proteinCarbRatio)}</p>
+              </article>
+            ))}
+          </div>
+          <div className="hidden overflow-x-auto lg:block">
             <table className="w-full min-w-[920px] text-sm">
               <thead className="bg-[#f4f8f2] text-left">
                 <tr>
@@ -752,7 +777,7 @@ function Medical({ data }: { data: DashboardData }) {
   const [state, action] = useActionState(saveMedicalRecord, initialState);
 
   return (
-    <div className="grid gap-5 lg:grid-cols-[0.82fr_1.18fr]">
+    <div className="grid gap-5 xl:grid-cols-[0.82fr_1.18fr]">
       <form action={action} className="rounded-lg border border-[#dbe5d8] bg-white p-4">
         <input name="userId" type="hidden" value={data.selectedUser.id} />
         <h2 className="font-semibold">Add medical data</h2>
@@ -767,13 +792,13 @@ function Medical({ data }: { data: DashboardData }) {
         <div className="mt-4"><ActionMessage state={state} /></div>
         <button className="mt-4 h-10 rounded-md bg-[#245b35] px-4 text-sm font-semibold text-white">Save medical record</button>
       </form>
-      <section className="space-y-4">
-        <div className="grid gap-3 sm:grid-cols-3">
+      <section className="min-w-0 space-y-4">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           <StatCard label="Latest BMI" value={data.medicalRecords[0] ? round(data.medicalRecords[0].bmi) : "-"} helper="Newest record" icon={HeartPulse} />
           <StatCard label="Latest BP" value={data.medicalRecords[0] ? `${round(data.medicalRecords[0].bpHigh, 0)}/${round(data.medicalRecords[0].bpLow, 0)}` : "-"} helper="Systolic / diastolic" icon={Activity} />
           <StatCard label="Records" value={`${data.medicalRecords.length}`} helper="All historical medical records" icon={Database} />
         </div>
-        <section className="rounded-lg border border-[#dbe5d8] bg-white">
+        <section className="min-w-0 rounded-lg border border-[#dbe5d8] bg-white">
           <div className="border-b border-[#e4ece1] p-4"><h2 className="font-semibold">Biometric history</h2></div>
           <div className="grid gap-3 p-4 sm:grid-cols-2">
             {data.medicalRecords.length === 0 ? <p className="text-sm text-[#6a7669]">No medical records yet.</p> : data.medicalRecords.map((record) => (
@@ -982,7 +1007,7 @@ function Graphs({ data }: { data: DashboardData }) {
       </section>
 
 
-      <div className="grid gap-5 xl:grid-cols-2">
+      <div className="grid gap-5 2xl:grid-cols-2">
         <section className="rounded-lg border border-[#dbe5d8] bg-white p-4">
           <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
             <div>
@@ -997,7 +1022,7 @@ function Graphs({ data }: { data: DashboardData }) {
               </p>
             ) : null}
           </div>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
             <MiniMetric label="Avg calories/day" value={avgCalories === null ? "-" : `${round(avgCalories, 0)} kcal`} helper="Average calories across visible nutrition days" />
             <MiniMetric label="Avg carbs/day" value={avgCarbs === null ? "-" : `${round(avgCarbs)} g`} helper="Average carbs across visible nutrition days" />
             <MiniMetric label="Avg proteins/day" value={avgProteins === null ? "-" : `${round(avgProteins)} g`} helper="Average proteins across visible nutrition days" />
@@ -1046,7 +1071,7 @@ function Graphs({ data }: { data: DashboardData }) {
               </p>
             ) : null}
           </div>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 2xl:grid-cols-3">
             <MiniMetric label="Avg BMI" value={avgBmi === null ? "-" : round(avgBmi)} helper="Average BMI across visible medical entries" />
             <MiniMetric label="Avg weight" value={avgWeight === null ? "-" : `${round(avgWeight)} kg`} helper="Average weight across visible medical entries" />
             <MiniMetric label="Avg BP" value={avgBpHigh === null || avgBpLow === null ? "-" : `${round(avgBpHigh, 0)}/${round(avgBpLow, 0)}`} helper="Average blood pressure across visible medical entries" />
@@ -1086,7 +1111,7 @@ function DatabaseTab({ data }: { data: DashboardData }) {
   const canEdit = data.currentUser.role === "ADMIN";
 
   return (
-    <div className="grid gap-5 lg:grid-cols-[0.82fr_1.18fr]">
+    <div className="grid gap-5 xl:grid-cols-[0.82fr_1.18fr]">
       {canEdit ? (
         <form action={action} className="rounded-lg border border-[#dbe5d8] bg-white p-4">
           <h2 className="font-semibold">Master food table</h2>
@@ -1105,12 +1130,15 @@ function DatabaseTab({ data }: { data: DashboardData }) {
           </div>
         </form>
       ) : null}
-      <section className="rounded-lg border border-[#dbe5d8] bg-white">
+      <section className="min-w-0 rounded-lg border border-[#dbe5d8] bg-white">
         <div className="flex items-center justify-between border-b border-[#e4ece1] p-4">
           <div><h2 className="font-semibold">Food database</h2><p className="text-sm text-[#6a7669]">Shared master list for every user.</p></div>
           <button onClick={() => downloadCsv("nutritrack-food-master.csv", [["Item", "Carbohydrates", "Proteins", "Fats", "Calories"], ...data.foodItems.map((item) => [item.itemName, item.carbohydrates, item.proteins, item.fats, item.calories])])} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]"><Download className="size-4" /></button>
         </div>
-        <div className="overflow-x-auto">
+        <div className="space-y-3 p-4 lg:hidden">
+          {data.foodItems.map((item) => <article key={item.id} className="rounded-lg border border-[#e4ece1] bg-[#f9fbf8] p-4"><p className="font-medium text-[#172117]">{item.itemName}</p><div className="mt-3 grid grid-cols-2 gap-3 text-sm text-[#4d5b4c]"><p><span className="font-medium text-[#172117]">Carbs:</span> {round(item.carbohydrates)}g</p><p><span className="font-medium text-[#172117]">Proteins:</span> {round(item.proteins)}g</p><p><span className="font-medium text-[#172117]">Fats:</span> {round(item.fats)}g</p><p><span className="font-medium text-[#172117]">Calories:</span> {round(item.calories, 0)}</p></div></article>)}
+        </div>
+        <div className="hidden overflow-x-auto lg:block">
           <table className="w-full min-w-[620px] text-sm">
             <thead className="bg-[#f4f8f2] text-left"><tr><th className="p-3">Item</th><th className="p-3">Carbs</th><th className="p-3">Proteins</th><th className="p-3">Fats</th><th className="p-3">Calories</th></tr></thead>
             <tbody>{data.foodItems.map((item) => <tr key={item.id} className="border-t border-[#eef3ec]"><td className="p-3 font-medium">{item.itemName}</td><td className="p-3">{round(item.carbohydrates)}g</td><td className="p-3">{round(item.proteins)}g</td><td className="p-3">{round(item.fats)}g</td><td className="p-3">{round(item.calories, 0)}</td></tr>)}</tbody>
@@ -1127,7 +1155,7 @@ function Profile({ data }: { data: DashboardData }) {
   const [targetState, targetAction] = useActionState(saveNutritionTarget, initialState);
 
   return (
-    <div className="grid gap-5 xl:grid-cols-[0.88fr_1.12fr]">
+    <div className="grid gap-5 2xl:grid-cols-[0.88fr_1.12fr]">
       <div className="space-y-5">
         <form action={profileAction} className="rounded-lg border border-[#dbe5d8] bg-white p-4">
           <input type="hidden" name="userId" value={data.selectedUser.id} />
@@ -1169,14 +1197,17 @@ function Profile({ data }: { data: DashboardData }) {
         </form>
       </div>
 
-      <section className="space-y-5">
+      <section className="min-w-0 space-y-5">
         <div className="rounded-lg border border-[#dbe5d8] bg-white p-4">
           <h2 className="font-semibold">Account summary</h2>
           <div className="mt-4 grid gap-3 sm:grid-cols-2"><StatCard label="Days on app" value={`${data.selectedUser.daysOnApp}`} helper="Based on start date" icon={UserRound} /><StatCard label="Days tracked" value={`${data.selectedUser.daysTracked}`} helper="Distinct food log dates" icon={Activity} /></div>
         </div>
         <section className="rounded-lg border border-[#dbe5d8] bg-white p-4">
           <div className="flex items-center justify-between gap-3"><div><h2 className="font-semibold">Target history</h2><p className="text-sm text-[#6a7669]">Applied according to the log date.</p></div><button onClick={() => downloadCsv("nutritrack-target-history.csv", [["Effective From", "Calories", "Carbs", "Proteins", "Fats"], ...data.targetProfiles.map((target) => [target.displayEffectiveFrom, target.targetCalories, target.targetCarbs, target.targetProteins, target.targetFats])])} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]"><Download className="size-4" /></button></div>
-          <div className="mt-4 overflow-x-auto">
+          <div className="mt-4 space-y-3 lg:hidden">
+            {data.targetProfiles.length === 0 ? <p className="rounded-lg border border-dashed border-[#d8e2d5] bg-[#f9fbf8] p-4 text-center text-sm text-[#6a7669]">No target history yet.</p> : data.targetProfiles.map((target) => <article key={target.id} className="rounded-lg border border-[#e4ece1] bg-[#f9fbf8] p-4"><p className="font-medium text-[#172117]">{target.displayEffectiveFrom}</p><div className="mt-3 grid grid-cols-2 gap-3 text-sm text-[#4d5b4c]"><p><span className="font-medium text-[#172117]">Calories:</span> {round(target.targetCalories, 0)}</p><p><span className="font-medium text-[#172117]">Carbs:</span> {round(target.targetCarbs)}g</p><p><span className="font-medium text-[#172117]">Proteins:</span> {round(target.targetProteins)}g</p><p><span className="font-medium text-[#172117]">Fats:</span> {round(target.targetFats)}g</p></div></article>)}
+          </div>
+          <div className="mt-4 hidden overflow-x-auto lg:block">
             <table className="w-full min-w-[560px] text-sm">
               <thead className="bg-[#f4f8f2] text-left"><tr><th className="p-3">Effective from</th><th className="p-3">Calories</th><th className="p-3">Carbs</th><th className="p-3">Proteins</th><th className="p-3">Fats</th></tr></thead>
               <tbody>{data.targetProfiles.length === 0 ? <tr><td colSpan={5} className="p-4 text-center text-[#6a7669]">No target history yet.</td></tr> : data.targetProfiles.map((target) => <tr key={target.id} className="border-t border-[#eef3ec]"><td className="p-3 font-medium">{target.displayEffectiveFrom}</td><td className="p-3">{round(target.targetCalories, 0)}</td><td className="p-3">{round(target.targetCarbs)}g</td><td className="p-3">{round(target.targetProteins)}g</td><td className="p-3">{round(target.targetFats)}g</td></tr>)}</tbody>
@@ -1201,9 +1232,9 @@ function Admin({ data }: { data: DashboardData }) {
   });
 
   return (
-    <div className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
+    <div className="grid gap-5 2xl:grid-cols-[0.9fr_1.1fr]">
       <section className="space-y-4">
-        <div className="grid grid-cols-2 gap-3"><StatCard label="Users" value={`${data.adminMetrics.totalUsers}`} helper="User accounts" icon={Users} /><StatCard label="Admins" value={`${data.adminMetrics.totalAdmins}`} helper="Admin accounts" icon={ShieldCheck} /><StatCard label="Avg calories" value={round(data.adminMetrics.avgCalories, 0)} helper="Average per food log" icon={Activity} /><StatCard label="High BP records" value={`${data.adminMetrics.highBpCount}`} helper=">= 130/80" icon={HeartPulse} /></div>
+        <div className="grid gap-3 sm:grid-cols-2"><StatCard label="Users" value={`${data.adminMetrics.totalUsers}`} helper="User accounts" icon={Users} /><StatCard label="Admins" value={`${data.adminMetrics.totalAdmins}`} helper="Admin accounts" icon={ShieldCheck} /><StatCard label="Avg calories" value={round(data.adminMetrics.avgCalories, 0)} helper="Average per food log" icon={Activity} /><StatCard label="High BP records" value={`${data.adminMetrics.highBpCount}`} helper=">= 130/80" icon={HeartPulse} /></div>
         <form action={action} className="rounded-lg border border-[#dbe5d8] bg-white p-4">
           <h2 className="font-semibold">Create user</h2>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -1227,18 +1258,24 @@ function Admin({ data }: { data: DashboardData }) {
         </form>
       </section>
       <section className="space-y-5">
-        <section className="rounded-lg border border-[#dbe5d8] bg-white">
+        <section className="min-w-0 rounded-lg border border-[#dbe5d8] bg-white">
           <div className="border-b border-[#e4ece1] p-4"><h2 className="font-semibold">All users</h2><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by name, email, or mobile" className="mt-3 h-10 w-full rounded-md border border-[#d8e2d5] bg-white px-3 text-sm outline-none focus:border-[#245b35]" /></div>
-          <div className="overflow-x-auto">
+          <div className="space-y-3 p-4 lg:hidden">
+            {filteredUsers.map((user) => <article key={user.id} className="rounded-lg border border-[#e4ece1] bg-[#f9fbf8] p-4"><a href={`/dashboard?userId=${user.id}`} className="font-medium text-[#245b35] hover:underline">{user.name}</a><p className="mt-1 text-sm text-[#6a7669]">{user.email}</p><div className="mt-3 grid grid-cols-2 gap-3 text-sm text-[#4d5b4c]"><p><span className="font-medium text-[#172117]">Mobile:</span> {user.mobileNumber}</p><p><span className="font-medium text-[#172117]">Role:</span> {user.role}</p><p><span className="font-medium text-[#172117]">Days tracked:</span> {user.daysTracked}</p><p><span className="font-medium text-[#172117]">Tracking:</span> {Math.round(user.trackingRate)}%</p></div></article>)}
+          </div>
+          <div className="hidden overflow-x-auto lg:block">
             <table className="w-full min-w-[820px] text-sm">
               <thead className="bg-[#f4f8f2] text-left"><tr><th className="p-3">Name</th><th className="p-3">Email</th><th className="p-3">Mobile</th><th className="p-3">Role</th><th className="p-3">Days tracked</th><th className="p-3">Tracking %</th></tr></thead>
               <tbody>{filteredUsers.map((user) => <tr key={user.id} className="border-t border-[#eef3ec]"><td className="p-3 font-medium"><a href={`/dashboard?userId=${user.id}`} className="text-[#245b35] hover:underline">{user.name}</a></td><td className="p-3">{user.email}</td><td className="p-3">{user.mobileNumber}</td><td className="p-3">{user.role}</td><td className="p-3">{user.daysTracked}</td><td className="p-3">{Math.round(user.trackingRate)}%</td></tr>)}</tbody>
             </table>
           </div>
         </section>
-        <section className="rounded-lg border border-[#dbe5d8] bg-white">
+        <section className="min-w-0 rounded-lg border border-[#dbe5d8] bg-white">
           <div className="flex items-center justify-between border-b border-[#e4ece1] p-4"><div><h2 className="font-semibold">Cross-user comparison</h2><p className="text-sm text-[#6a7669]">Compare intake, tracking, and latest medical values.</p></div><button onClick={() => downloadCsv("nutritrack-admin-comparison.csv", [["Name", "Email", "Mobile", "Role", "Total Logs", "Days Tracked", "Tracking %", "Avg Calories/Log", "Avg Carbs/Log", "Avg Proteins/Log", "Avg Fats/Log", "Latest BMI", "Latest BP Low", "Latest BP High", "Latest Medical Date"], ...data.comparisonRows.map((row) => [row.name, row.email, row.mobileNumber, row.role, row.totalLogs, row.daysTracked, Math.round(row.trackingRate), row.avgCaloriesPerLog, row.avgCarbsPerLog, row.avgProteinsPerLog, row.avgFatsPerLog, row.latestBmi, row.latestBpLow, row.latestBpHigh, row.latestMedicalDate])])} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]"><Download className="size-4" /></button></div>
-          <div className="overflow-x-auto">
+          <div className="space-y-3 p-4 lg:hidden">
+            {data.comparisonRows.map((row) => <article key={row.userId} className="rounded-lg border border-[#e4ece1] bg-[#f9fbf8] p-4"><a href={`/dashboard?userId=${row.userId}`} className="font-medium text-[#245b35] hover:underline">{row.name}</a><p className="mt-1 text-sm text-[#6a7669]">{row.email}</p><div className="mt-3 grid grid-cols-2 gap-3 text-sm text-[#4d5b4c]"><p><span className="font-medium text-[#172117]">Logs:</span> {row.totalLogs}</p><p><span className="font-medium text-[#172117]">Tracked days:</span> {row.daysTracked}</p><p><span className="font-medium text-[#172117]">Tracking:</span> {Math.round(row.trackingRate)}%</p><p><span className="font-medium text-[#172117]">Avg kcal:</span> {round(row.avgCaloriesPerLog, 0)}</p><p><span className="font-medium text-[#172117]">Avg carbs:</span> {round(row.avgCarbsPerLog)}g</p><p><span className="font-medium text-[#172117]">Avg proteins:</span> {round(row.avgProteinsPerLog)}g</p><p><span className="font-medium text-[#172117]">Avg fats:</span> {round(row.avgFatsPerLog)}g</p><p><span className="font-medium text-[#172117]">Latest BMI:</span> {row.latestBmi === null ? "-" : round(row.latestBmi)}</p></div><p className="mt-3 text-sm text-[#4d5b4c]"><span className="font-medium text-[#172117]">Latest BP:</span> {row.latestBpHigh && row.latestBpLow ? `${round(row.latestBpHigh, 0)}/${round(row.latestBpLow, 0)}` : "-"}</p></article>)}
+          </div>
+          <div className="hidden overflow-x-auto lg:block">
             <table className="w-full min-w-[1080px] text-sm">
               <thead className="bg-[#f4f8f2] text-left"><tr><th className="p-3">User</th><th className="p-3">Logs</th><th className="p-3">Tracked days</th><th className="p-3">Tracking %</th><th className="p-3">Avg kcal</th><th className="p-3">Avg carbs</th><th className="p-3">Avg proteins</th><th className="p-3">Avg fats</th><th className="p-3">Latest BMI</th><th className="p-3">Latest BP</th></tr></thead>
               <tbody>{data.comparisonRows.map((row) => <tr key={row.userId} className="border-t border-[#eef3ec]"><td className="p-3"><a href={`/dashboard?userId=${row.userId}`} className="font-medium text-[#245b35] hover:underline">{row.name}</a><p className="text-xs text-[#6a7669]">{row.email}</p></td><td className="p-3">{row.totalLogs}</td><td className="p-3">{row.daysTracked}</td><td className="p-3">{Math.round(row.trackingRate)}%</td><td className="p-3">{round(row.avgCaloriesPerLog, 0)}</td><td className="p-3">{round(row.avgCarbsPerLog)}g</td><td className="p-3">{round(row.avgProteinsPerLog)}g</td><td className="p-3">{round(row.avgFatsPerLog)}g</td><td className="p-3">{row.latestBmi === null ? "-" : round(row.latestBmi)}</td><td className="p-3">{row.latestBpHigh && row.latestBpLow ? `${round(row.latestBpHigh, 0)}/${round(row.latestBpLow, 0)}` : "-"}</td></tr>)}</tbody>

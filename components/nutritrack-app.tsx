@@ -573,17 +573,17 @@ function getHeaderHighlights(tab: Tab, data: DashboardData): HeaderHighlight[] {
       ];
     case "profile":
       return [
-        { label: "Role", value: data.selectedUser.role, helper: "Access level for this user", icon: ShieldCheck },
-        { label: "Start date", value: data.selectedUser.displayStartDate, helper: `${data.selectedUser.daysOnApp} total days on app`, icon: UserRound },
-        { label: "Target profiles", value: `${data.targetProfiles.length}`, helper: "Historical nutrition target versions", icon: BarChart3 },
-        { label: "Active target calories", value: data.selectedUser.activeTargets ? `${round(data.selectedUser.activeTargets.targetCalories, 0)} kcal` : "-", helper: "Latest active nutrition target", icon: Apple },
+        // { label: "Role", value: data.selectedUser.role, helper: "Access level for this user", icon: ShieldCheck },
+        // { label: "Start date", value: data.selectedUser.displayStartDate, helper: `${data.selectedUser.daysOnApp} total days on app`, icon: UserRound },
+        // { label: "Target profiles", value: `${data.targetProfiles.length}`, helper: "Historical nutrition target versions", icon: BarChart3 },
+        // { label: "Active target calories", value: data.selectedUser.activeTargets ? `${round(data.selectedUser.activeTargets.targetCalories, 0)} kcal` : "-", helper: "Latest active nutrition target", icon: Apple },
       ];
     case "admin":
       return [
-        // { label: "Total users", value: `${adminMetrics?.totalUsers ?? data.users.length}`, helper: "Users visible to admin", icon: Users },
-        // { label: "Admins", value: `${adminMetrics?.totalAdmins ?? data.users.filter((user) => user.role === "ADMIN").length}`, helper: "Users with elevated access", icon: ShieldCheck },
-        // { label: "Food logs", value: `${adminMetrics?.totalFoodLogs ?? data.comparisonRows.reduce((sum, row) => sum + row.totalLogs, 0)}`, helper: "All logged food entries", icon: Database },
-        // { label: "High BP users", value: `${adminMetrics?.highBpCount ?? 0}`, helper: "Latest medical entries with high BP", icon: HeartPulse },
+        { label: "Total users", value: `${adminMetrics?.totalUsers ?? data.users.length}`, helper: "", icon: Users },
+        { label: "Admins", value: `${adminMetrics?.totalAdmins ?? data.users.filter((user) => user.role === "ADMIN").length}`, helper: "", icon: ShieldCheck },
+        { label: "Food logs", value: `${adminMetrics?.totalFoodLogs ?? data.comparisonRows.reduce((sum, row) => sum + row.totalLogs, 0)}`, helper: "", icon: Database },
+        { label: "High BP users", value: `${adminMetrics?.highBpCount ?? 0}`, helper: "", icon: HeartPulse },
       ];
   }
 }

@@ -458,15 +458,24 @@ function getHeaderHighlights(tab: Tab, data: DashboardData): HeaderHighlight[] {
   const latestMedical = [...data.medicalRecords].sort((a, b) => a.date.localeCompare(b.date)).at(-1) ?? null;
   const dailyNutrition = Array.from(
     data.foodLogs.reduce((map, log) => {
-      const entry = map.get(log.date) ?? { calories: 0, proteins: 0 };
+      const entry = map.get(log.date) ?? { calories: 0, carbs: 0, proteins: 0, fats: 0, ratioTotal: 0, ratioCount: 0 };
       entry.calories += log.calories;
+      entry.carbs += log.carbs;
       entry.proteins += log.proteins;
+      entry.fats += log.fats;
+      if (typeof log.proteinCarbRatio === "number" && Number.isFinite(log.proteinCarbRatio)) {
+        entry.ratioTotal += log.proteinCarbRatio;
+        entry.ratioCount += 1;
+      }
       map.set(log.date, entry);
       return map;
-    }, new Map<string, { calories: number; proteins: number }>()).values(),
+    }, new Map<string, { calories: number; carbs: number; proteins: number; fats: number; ratioTotal: number; ratioCount: number }>()).values(),
   );
   const avgDailyCalories = average(dailyNutrition.map((entry) => entry.calories));
+  const avgDailyCarbs = average(dailyNutrition.map((entry) => entry.carbs));
   const avgDailyProteins = average(dailyNutrition.map((entry) => entry.proteins));
+  const avgDailyFats = average(dailyNutrition.map((entry) => entry.fats));
+  const avgDailyRatio = average(dailyNutrition.flatMap((entry) => (entry.ratioCount > 0 ? [entry.ratioTotal / entry.ratioCount] : [])));
   const avgFoodCalories = average(data.foodItems.map((item) => item.calories));
   const avgFoodProteins = average(data.foodItems.map((item) => item.proteins));
   const adminMetrics = data.adminMetrics;
@@ -474,17 +483,18 @@ function getHeaderHighlights(tab: Tab, data: DashboardData): HeaderHighlight[] {
   switch (tab) {
     case "tracker":
       return [
-        { label: "Days tracked", value: `${data.selectedUser.daysTracked}`, helper: "Distinct intake days recorded", icon: Activity },
-        { label: "Tracking rate", value: `${Math.round(data.selectedUser.trackingRate)}%`, helper: "Tracked days over total days on app", icon: BarChart3 },
-        { label: "Latest log date", value: latestFoodLog?.displayDate ?? "-", helper: latestFoodLog ? `${round(latestFoodLog.calories, 0)} kcal in latest entry` : "No intake logged yet", icon: Apple },
-        { label: "Active target calories", value: data.selectedUser.activeTargets ? `${round(data.selectedUser.activeTargets.targetCalories, 0)} kcal` : "-", helper: "Current target profile", icon: HeartPulse },
+        { label: "Avg calories", value: avgDailyCalories === null ? "-" : `${round(avgDailyCalories, 0)} kcal`, helper: "Per tracked day", icon: Apple },
+        { label: "Avg carbs", value: avgDailyCarbs === null ? "-" : `${round(avgDailyCarbs)} g`, helper: "Per tracked day", icon: BarChart3 },
+        { label: "Avg proteins", value: avgDailyProteins === null ? "-" : `${round(avgDailyProteins)} g`, helper: "Per tracked day", icon: Activity },
+        { label: "Avg fats", value: avgDailyFats === null ? "-" : `${round(avgDailyFats)} g`, helper: "Per tracked day", icon: HeartPulse },
+        { label: "Avg P/C ratio", value: avgDailyRatio === null ? "-" : round(avgDailyRatio), helper: latestFoodLog ? `Latest log ${latestFoodLog.displayDate}` : "Across tracked days", icon: UserRound },
       ];
     case "medical":
       return [
-        { label: "Medical records", value: `${data.medicalRecords.length}`, helper: "Historical biometric entries", icon: Database },
-        { label: "Latest BMI", value: latestMedical ? round(latestMedical.bmi) : "-", helper: latestMedical ? `Recorded on ${latestMedical.displayDate}` : "No biometric history yet", icon: HeartPulse },
-        { label: "Latest BP", value: latestMedical ? `${round(latestMedical.bpHigh, 0)}/${round(latestMedical.bpLow, 0)}` : "-", helper: "Most recent blood pressure", icon: Activity },
-        { label: "Latest weight", value: latestMedical ? `${round(latestMedical.weight)} kg` : "-", helper: "Most recent weight entry", icon: UserRound },
+        { label: "Avg BMI", value: data.medicalRecords.length ? round(average(data.medicalRecords.map((record) => record.bmi))) : "-", helper: "Average across all medical records", icon: HeartPulse },
+        { label: "Avg systolic", value: data.medicalRecords.length ? `${round(average(data.medicalRecords.map((record) => record.bpHigh)), 0)}` : "-", helper: "Average upper BP across records", icon: Activity },
+        { label: "Avg diastolic", value: data.medicalRecords.length ? `${round(average(data.medicalRecords.map((record) => record.bpLow)), 0)}` : "-", helper: "Average lower BP across records", icon: BarChart3 },
+        { label: "Avg weight", value: data.medicalRecords.length ? `${round(average(data.medicalRecords.map((record) => record.weight)))} kg` : "-", helper: "Average weight across records", icon: UserRound },
       ];
     case "graphs":
       return [
@@ -566,18 +576,38 @@ function Shell({ data, tab, setTab, children }: { data: DashboardData; tab: Tab;
           <div className="rounded-lg border border-[#dbe5d8] bg-white p-4">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#4f7f5d]">Page highlights</p>
             <h2 className="mt-1 font-semibold">{activeTab.label} specific metrics</h2>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              {headerHighlights.map((highlight) => (
-                <div key={highlight.label} className="rounded-lg border border-[#e4ece1] bg-[#f9fbf8] p-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-[#6a7669]">{highlight.label}</p>
-                    <highlight.icon className="size-4 text-[#4f7f5d]" />
-                  </div>
-                  <p className="mt-2 text-lg font-semibold text-[#172117]">{highlight.value}</p>
-                  <p className="mt-1 text-xs text-[#6a7669]">{highlight.helper}</p>
+            {tab === "tracker" ? (
+              <div className="mt-4 space-y-3">
+                <div className="rounded-lg border border-[#e4ece1] bg-[#f9fbf8] px-3 py-2">
+                  <DonutChart percent={data.selectedUser.trackingRate} label={`${data.selectedUser.daysTracked} tracked / ${data.selectedUser.daysOnApp} days`} />
                 </div>
-              ))}
-            </div>
+                <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
+                  {headerHighlights.map((highlight) => (
+                    <div key={highlight.label} className="rounded-lg border border-[#e4ece1] bg-[#f9fbf8] px-3 py-2.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-[#6a7669]">{highlight.label}</p>
+                        <highlight.icon className="size-3.5 text-[#4f7f5d]" />
+                      </div>
+                      <p className="mt-1.5 text-base font-semibold text-[#172117]">{highlight.value}</p>
+                      <p className="mt-0.5 text-[11px] text-[#6a7669]">{highlight.helper}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                {headerHighlights.map((highlight) => (
+                  <div key={highlight.label} className="rounded-lg border border-[#e4ece1] bg-[#f9fbf8] px-3 py-2.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-[#6a7669]">{highlight.label}</p>
+                      <highlight.icon className="size-3.5 text-[#4f7f5d]" />
+                    </div>
+                    <p className="mt-1.5 text-base font-semibold text-[#172117]">{highlight.value}</p>
+                    <p className="mt-0.5 text-[11px] text-[#6a7669]">{highlight.helper}</p>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </section>
         {children}
@@ -935,27 +965,6 @@ function Graphs({ data }: { data: DashboardData }) {
         </div>
       </section>
 
-      <section className="rounded-lg border border-[#dbe5d8] bg-white p-4">
-        <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h2 className="font-semibold">Average insights for the selected range</h2>
-            <p className="text-sm text-[#6a7669]">These tiles update whenever the date range changes.</p>
-          </div>
-          <p className="text-xs text-[#6a7669]">
-            Nutrition days: {filteredNutritionSeries.length} | Medical points: {filteredBiometricSeries.length}
-          </p>
-        </div>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <MiniMetric label="Avg calories/day" value={avgCalories === null ? "-" : `${round(avgCalories, 0)} kcal`} helper="Average calories across visible nutrition days" />
-          <MiniMetric label="Avg carbs/day" value={avgCarbs === null ? "-" : `${round(avgCarbs)} g`} helper="Average carbs across visible nutrition days" />
-          <MiniMetric label="Avg proteins/day" value={avgProteins === null ? "-" : `${round(avgProteins)} g`} helper="Average proteins across visible nutrition days" />
-          <MiniMetric label="Avg fats/day" value={avgFats === null ? "-" : `${round(avgFats)} g`} helper="Average fats across visible nutrition days" />
-          <MiniMetric label="Avg protein/carb ratio" value={avgRatio === null ? "-" : round(avgRatio)} helper="Average of daily ratio values in range" />
-          <MiniMetric label="Avg BMI" value={avgBmi === null ? "-" : round(avgBmi)} helper="Average BMI across visible medical entries" />
-          <MiniMetric label="Avg weight" value={avgWeight === null ? "-" : `${round(avgWeight)} kg`} helper="Average weight across visible medical entries" />
-          <MiniMetric label="Avg BP" value={avgBpHigh === null || avgBpLow === null ? "-" : `${round(avgBpHigh, 0)}/${round(avgBpLow, 0)}`} helper="Average blood pressure across visible medical entries" />
-        </div>
-      </section>
 
       <div className="grid gap-5 xl:grid-cols-2">
         <section className="rounded-lg border border-[#dbe5d8] bg-white p-4">
@@ -971,6 +980,13 @@ function Graphs({ data }: { data: DashboardData }) {
                 Latest in range: {latestNutrition.label} - {round(latestNutrition.calories, 0)} kcal
               </p>
             ) : null}
+          </div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+            <MiniMetric label="Avg calories/day" value={avgCalories === null ? "-" : `${round(avgCalories, 0)} kcal`} helper="Average calories across visible nutrition days" />
+            <MiniMetric label="Avg carbs/day" value={avgCarbs === null ? "-" : `${round(avgCarbs)} g`} helper="Average carbs across visible nutrition days" />
+            <MiniMetric label="Avg proteins/day" value={avgProteins === null ? "-" : `${round(avgProteins)} g`} helper="Average proteins across visible nutrition days" />
+            <MiniMetric label="Avg fats/day" value={avgFats === null ? "-" : `${round(avgFats)} g`} helper="Average fats across visible nutrition days" />
+            <MiniMetric label="Avg protein/carb ratio" value={avgRatio === null ? "-" : round(avgRatio)} helper="Average of daily ratio values in range" />
           </div>
 
           {filteredNutritionSeries.length === 0 ? (
@@ -1018,6 +1034,11 @@ function Graphs({ data }: { data: DashboardData }) {
                 Latest in range: {latestMedical.label} - BMI {round(latestMedical.bmi)}
               </p>
             ) : null}
+          </div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <MiniMetric label="Avg BMI" value={avgBmi === null ? "-" : round(avgBmi)} helper="Average BMI across visible medical entries" />
+            <MiniMetric label="Avg weight" value={avgWeight === null ? "-" : `${round(avgWeight)} kg`} helper="Average weight across visible medical entries" />
+            <MiniMetric label="Avg BP" value={avgBpHigh === null || avgBpLow === null ? "-" : `${round(avgBpHigh, 0)}/${round(avgBpLow, 0)}`} helper="Average blood pressure across visible medical entries" />
           </div>
 
           {filteredBiometricSeries.length === 0 ? (

@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider   = "prisma-client-js"
+  engineType = "client"
 }
 
 datasource db {
@@ -97,3 +98,4 @@ model FoodLog {
   @@index([foodItemId])
   @@map("food_logs")
 }
+

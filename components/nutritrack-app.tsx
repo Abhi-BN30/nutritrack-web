@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useActionState, useEffect, useMemo, useState } from "react";
+import { useActionState, useMemo, useState } from "react";
 import {
   Activity,
   Apple,
@@ -179,10 +179,6 @@ function clampDate(value: string, minDate: string, maxDate: string) {
   if (value < minDate) return minDate;
   if (value > maxDate) return maxDate;
   return value;
-}
-
-function formatRangeLabel(startDate: string, endDate: string) {
-  return startDate === endDate ? startDate : `${startDate} to ${endDate}`;
 }
 
 function average(values: number[]) {
@@ -376,6 +372,37 @@ function StatCard({ label, value, helper, icon: Icon }: { label: string; value: 
   );
 }
 
+function PageHighlightTile({
+  label,
+  value,
+  helper,
+  icon: Icon,
+}: {
+  label: string;
+  value: string;
+  helper: string;
+  icon: typeof Activity;
+}) {
+  return (
+    <div className="aspect-square rounded-lg border border-[#e4ece1] bg-[#f9fbf8] px-3 py-3 sm:aspect-auto sm:min-h-[108px] sm:px-3 sm:py-2.5 lg:min-h-[96px]">
+      <div className="flex h-full flex-col justify-between gap-3">
+        <div className="flex items-start justify-between gap-2">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-[#6a7669] sm:text-[10px] lg:text-[11px]">
+            {label}
+          </p>
+          <Icon className="size-3.5 shrink-0 text-[#4f7f5d]" />
+        </div>
+        <div>
+          <p className="text-lg font-semibold leading-tight text-[#172117] sm:text-base lg:text-[1.15rem]">
+            {value}
+          </p>
+          {helper ? <p className="mt-1 text-[11px] text-[#6a7669]">{helper}</p> : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function TargetCards({ totals, targets }: { totals: Targets; targets: Targets | null }) {
   const items = [
     { key: "targetCalories", label: "Calories", actual: totals.targetCalories, unit: "kcal", icon: Activity },
@@ -515,8 +542,6 @@ type HeaderHighlight = {
 };
 
 function getHeaderHighlights(tab: Tab, data: DashboardData): HeaderHighlight[] {
-  const latestFoodLog = [...data.foodLogs].sort((a, b) => a.date.localeCompare(b.date)).at(-1) ?? null;
-  const latestMedical = [...data.medicalRecords].sort((a, b) => a.date.localeCompare(b.date)).at(-1) ?? null;
   const dailyNutrition = Array.from(
     data.foodLogs.reduce((map, log) => {
       const entry = map.get(log.date) ?? { calories: 0, carbs: 0, proteins: 0, fats: 0, ratioTotal: 0, ratioCount: 0 };
@@ -642,30 +667,16 @@ function Shell({ data, tab, setTab, children }: { data: DashboardData; tab: Tab;
                 <div className="rounded-lg border border-[#e4ece1] bg-[#f9fbf8] px-3 py-2">
                   <DonutChart percent={data.selectedUser.trackingRate} label={`${data.selectedUser.daysTracked} tracked / ${data.selectedUser.daysOnApp} days`} />
                 </div>
-                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">
                   {headerHighlights.map((highlight) => (
-                    <div key={highlight.label} className="rounded-lg border border-[#e4ece1] bg-[#f9fbf8] px-3 py-2.5">
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="text-[11px] font-semibold uppercase tracking-wide text-[#6a7669]">{highlight.label}</p>
-                        <highlight.icon className="size-3.5 text-[#4f7f5d]" />
-                      </div>
-                      <p className="mt-1.5 text-base font-semibold text-[#172117]">{highlight.value}</p>
-                      <p className="mt-0.5 text-[11px] text-[#6a7669]">{highlight.helper}</p>
-                    </div>
+                    <PageHighlightTile key={highlight.label} {...highlight} />
                   ))}
                 </div>
               </div>
             ) : (
-              <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+              <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-2 xl:grid-cols-4">
                 {headerHighlights.map((highlight) => (
-                  <div key={highlight.label} className="rounded-lg border border-[#e4ece1] bg-[#f9fbf8] px-3 py-2.5">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-[11px] font-semibold uppercase tracking-wide text-[#6a7669]">{highlight.label}</p>
-                      <highlight.icon className="size-3.5 text-[#4f7f5d]" />
-                    </div>
-                    <p className="mt-1.5 text-base font-semibold text-[#172117]">{highlight.value}</p>
-                    <p className="mt-0.5 text-[11px] text-[#6a7669]">{highlight.helper}</p>
-                  </div>
+                  <PageHighlightTile key={highlight.label} {...highlight} />
                 ))}
               </div>
             )}
@@ -709,10 +720,6 @@ function Tracker({ data }: { data: DashboardData }) {
 
   const targetForSelectedDate = resolveTargetForDate(data.targetProfiles, selectedDate);
 
-  useEffect(() => {
-    setQuantityMetric("GRAMS");
-  }, [editingLog?.id]);
-
   const quantityLabel = quantityMetric === "GRAMS" ? "Quantity grams" : quantityMetric === "ML" ? "Quantity ml" : "Quantity count";
   const quantityStep = quantityMetric === "INTEGER" ? "1" : "0.1";
 
@@ -745,7 +752,7 @@ function Tracker({ data }: { data: DashboardData }) {
                 <h2 className="font-semibold">{editingLog ? "Edit food log" : "Add food log"}</h2>
                 {/* <p className="text-sm text-[#6a7669]">Protein/carb ratio is calculated automatically from the selected food and metric-based quantity. Integer entries are treated as 1 serving = 100g, and ml entries are treated as ml-to-gram equivalents.</p> */}
               </div>
-              {editingLog ? <button type="button" onClick={() => setEditingLog(null)} className="rounded-md border border-[#d8e2d5] px-3 py-2 text-sm font-medium hover:bg-[#f4f7f2]">Cancel edit</button> : null}
+              {editingLog ? <button type="button" onClick={() => { setEditingLog(null); setQuantityMetric("GRAMS"); }} className="rounded-md border border-[#d8e2d5] px-3 py-2 text-sm font-medium hover:bg-[#f4f7f2]">Cancel edit</button> : null}
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <label>
@@ -795,7 +802,7 @@ function Tracker({ data }: { data: DashboardData }) {
                     <p className="text-sm text-[#6a7669]">{log.displayDate}</p>
                   </div>
                   <div className="flex gap-2">
-                    <button type="button" onClick={() => { setEditingLog(log); setSelectedDate(log.date); }} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]"><Pencil className="size-4" /></button>
+                    <button type="button" onClick={() => { setEditingLog(log); setSelectedDate(log.date); setQuantityMetric("GRAMS"); }} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]"><Pencil className="size-4" /></button>
                     <form action={deleteFoodLog}><input type="hidden" name="id" value={log.id} /><button className="rounded-md border border-[#ead0cb] p-2 text-[#a13f32] hover:bg-[#fff4f2]"><Trash2 className="size-4" /></button></form>
                   </div>
                 </div>
@@ -822,7 +829,7 @@ function Tracker({ data }: { data: DashboardData }) {
                 {visibleLogs.length === 0 ? <tr><td colSpan={10} className="p-5 text-center text-sm text-[#6a7669]">No food logs found.</td></tr> : visibleLogs.map((log) => (
                   <tr key={log.id} className="border-t border-[#eef3ec]">
                     <td className="p-3">{log.displayDate}</td><td className="p-3 font-medium">{log.dishName}</td><td className="p-3">{log.foodItem}</td><td className="p-3">{round(log.quantityGms, 0)}</td><td className="p-3">{round(log.carbs)}g</td><td className="p-3">{round(log.proteins)}g</td><td className="p-3">{round(log.fats)}g</td><td className="p-3">{round(log.calories, 0)}</td><td className="p-3">{log.proteinCarbRatio === null ? "-" : round(log.proteinCarbRatio)}</td>
-                    <td className="p-3"><div className="flex gap-2"><button type="button" onClick={() => { setEditingLog(log); setSelectedDate(log.date); }} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]"><Pencil className="size-4" /></button><form action={deleteFoodLog}><input type="hidden" name="id" value={log.id} /><button className="rounded-md border border-[#ead0cb] p-2 text-[#a13f32] hover:bg-[#fff4f2]"><Trash2 className="size-4" /></button></form></div></td>
+                    <td className="p-3"><div className="flex gap-2"><button type="button" onClick={() => { setEditingLog(log); setSelectedDate(log.date); setQuantityMetric("GRAMS"); }} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]"><Pencil className="size-4" /></button><form action={deleteFoodLog}><input type="hidden" name="id" value={log.id} /><button className="rounded-md border border-[#ead0cb] p-2 text-[#a13f32] hover:bg-[#fff4f2]"><Trash2 className="size-4" /></button></form></div></td>
                   </tr>
                 ))}
               </tbody>
@@ -883,31 +890,31 @@ function Graphs({ data }: { data: DashboardData }) {
   );
   const minAvailableDate = allSeriesDates.at(0) ?? today;
   const maxAvailableDate = allSeriesDates.at(-1) ?? today;
-  const [startDate, setStartDate] = useState(clampDate(shiftDate(maxAvailableDate, -29), minAvailableDate, maxAvailableDate));
-  const [endDate, setEndDate] = useState(maxAvailableDate);
+  const [customStartDate, setCustomStartDate] = useState(() =>
+    clampDate(shiftDate(maxAvailableDate, -29), minAvailableDate, maxAvailableDate),
+  );
+  const [customEndDate, setCustomEndDate] = useState(() => maxAvailableDate);
 
-  useEffect(() => {
+  const clampedCustomStartDate = clampDate(customStartDate, minAvailableDate, maxAvailableDate);
+  const clampedCustomEndDate = clampDate(customEndDate, minAvailableDate, maxAvailableDate);
+
+  const [normalizedStartDate, normalizedEndDate] = useMemo(() => {
     if (rangePreset === "7d") {
-      setStartDate(clampDate(shiftDate(maxAvailableDate, -6), minAvailableDate, maxAvailableDate));
-      setEndDate(maxAvailableDate);
-      return;
+      return [clampDate(shiftDate(maxAvailableDate, -6), minAvailableDate, maxAvailableDate), maxAvailableDate];
     }
 
     if (rangePreset === "30d") {
-      setStartDate(clampDate(shiftDate(maxAvailableDate, -29), minAvailableDate, maxAvailableDate));
-      setEndDate(maxAvailableDate);
-      return;
+      return [clampDate(shiftDate(maxAvailableDate, -29), minAvailableDate, maxAvailableDate), maxAvailableDate];
     }
 
     if (rangePreset === "all") {
-      setStartDate(minAvailableDate);
-      setEndDate(maxAvailableDate);
-      return;
+      return [minAvailableDate, maxAvailableDate];
     }
 
-    setStartDate((current) => clampDate(current, minAvailableDate, maxAvailableDate));
-    setEndDate((current) => clampDate(current, minAvailableDate, maxAvailableDate));
-  }, [maxAvailableDate, minAvailableDate, rangePreset]);
+    return clampedCustomStartDate <= clampedCustomEndDate
+      ? [clampedCustomStartDate, clampedCustomEndDate]
+      : [clampedCustomEndDate, clampedCustomStartDate];
+  }, [clampedCustomEndDate, clampedCustomStartDate, maxAvailableDate, minAvailableDate, rangePreset]);
 
   const nutritionSeries = useMemo(() => {
     const map = new Map<
@@ -977,9 +984,6 @@ function Graphs({ data }: { data: DashboardData }) {
     [data.medicalRecords],
   );
 
-  const normalizedStartDate = startDate <= endDate ? startDate : endDate;
-  const normalizedEndDate = endDate >= startDate ? endDate : startDate;
-
   const filteredNutritionSeries = useMemo(
     () => nutritionSeries.filter((entry) => entry.date >= normalizedStartDate && entry.date <= normalizedEndDate),
     [normalizedEndDate, normalizedStartDate, nutritionSeries],
@@ -1043,7 +1047,7 @@ function Graphs({ data }: { data: DashboardData }) {
                   value={normalizedStartDate}
                   onChange={(event) => {
                     setRangePreset("custom");
-                    setStartDate(clampDate(event.target.value, minAvailableDate, maxAvailableDate));
+                    setCustomStartDate(clampDate(event.target.value, minAvailableDate, maxAvailableDate));
                   }}
                   className="h-10 w-full rounded-md border border-[#d8e2d5] bg-white px-3 text-sm outline-none focus:border-[#245b35]"
                 />
@@ -1057,7 +1061,7 @@ function Graphs({ data }: { data: DashboardData }) {
                   value={normalizedEndDate}
                   onChange={(event) => {
                     setRangePreset("custom");
-                    setEndDate(clampDate(event.target.value, minAvailableDate, maxAvailableDate));
+                    setCustomEndDate(clampDate(event.target.value, minAvailableDate, maxAvailableDate));
                   }}
                   className="h-10 w-full rounded-md border border-[#d8e2d5] bg-white px-3 text-sm outline-none focus:border-[#245b35]"
                 />

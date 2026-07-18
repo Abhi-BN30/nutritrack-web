@@ -385,64 +385,125 @@ function TargetCards({ totals, targets }: { totals: Targets; targets: Targets | 
   ] as const;
 
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-      {items.map((item) => {
-        const targetValue = targets ? targets[item.key] : 0;
-        const progress = targetValue > 0 ? (item.actual / targetValue) * 100 : 0;
-        const displayProgress = Math.max(0, Math.min(progress, 100));
-        const radius = 28;
-        const circumference = 2 * Math.PI * radius;
-        const offset = circumference - (displayProgress / 100) * circumference;
-        const toneClass = progress > 100 ? "text-[#b14646]" : "text-[#245b35]";
-        const strokeColor = progress > 100 ? "#b14646" : "#245b35";
+    <>
+      <div className="grid grid-cols-2 gap-3 sm:hidden">
+        {items.map((item) => {
+          const targetValue = targets ? targets[item.key] : 0;
+          const progress = targetValue > 0 ? (item.actual / targetValue) * 100 : 0;
+          const displayProgress = Math.max(0, Math.min(progress, 100));
+          const radius = 22;
+          const circumference = 2 * Math.PI * radius;
+          const offset = circumference - (displayProgress / 100) * circumference;
+          const toneClass = progress > 100 ? "text-[#b14646]" : "text-[#245b35]";
+          const strokeColor = progress > 100 ? "#b14646" : "#245b35";
 
-        return (
-          <div key={item.key} className="rounded-lg border border-[#dbe5d8] bg-white p-4">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-sm font-medium text-[#5b685a]">{item.label}</span>
-              <item.icon className="size-4 text-[#4f7f5d]" />
-            </div>
+          return (
+            <div key={item.key} className="aspect-square rounded-lg border border-[#dbe5d8] bg-white p-3">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-medium text-[#5b685a]">{item.label}</span>
+                <item.icon className="size-3.5 text-[#4f7f5d]" />
+              </div>
 
-            <div className="mt-4 flex items-center gap-4">
-              <svg width="84" height="84" viewBox="0 0 84 84" className="shrink-0">
-                <circle cx="42" cy="42" r={radius} fill="none" stroke="#e5eee2" strokeWidth="8" />
-                <circle
-                  cx="42"
-                  cy="42"
-                  r={radius}
-                  fill="none"
-                  stroke={strokeColor}
-                  strokeWidth="8"
-                  strokeLinecap="round"
-                  strokeDasharray={circumference}
-                  strokeDashoffset={offset}
-                  transform="rotate(-90 42 42)"
-                />
-                <text x="42" y="40" textAnchor="middle" className="fill-[#172117] text-[15px] font-semibold">
-                  {Math.round(displayProgress)}%
-                </text>
-                <text x="42" y="54" textAnchor="middle" className="fill-[#6a7669] text-[10px] font-medium">
-                  of goal
-                </text>
-              </svg>
+              <div className="mt-3 flex justify-center">
+                <svg width="68" height="68" viewBox="0 0 68 68" className="shrink-0">
+                  <circle cx="34" cy="34" r={radius} fill="none" stroke="#e5eee2" strokeWidth="7" />
+                  <circle
+                    cx="34"
+                    cy="34"
+                    r={radius}
+                    fill="none"
+                    stroke={strokeColor}
+                    strokeWidth="7"
+                    strokeLinecap="round"
+                    strokeDasharray={circumference}
+                    strokeDashoffset={offset}
+                    transform="rotate(-90 34 34)"
+                  />
+                  <text x="34" y="32" textAnchor="middle" className="fill-[#172117] text-[12px] font-semibold">
+                    {Math.round(displayProgress)}%
+                  </text>
+                  <text x="34" y="43" textAnchor="middle" className="fill-[#6a7669] text-[8px] font-medium">
+                    of goal
+                  </text>
+                </svg>
+              </div>
 
-              <div className="min-w-0 flex-1">
-                <p className="text-2xl font-semibold text-[#172117]">
+              <div className="mt-2 text-center">
+                <p className="text-lg font-semibold text-[#172117] leading-none">
                   {round(item.actual, item.unit === "kcal" ? 0 : 1)}
                   {item.unit}
                 </p>
-                <p className="mt-1 text-xs text-[#6a7669]">
+                <p className="mt-1 text-[11px] text-[#6a7669] leading-tight">
                   Target {targetValue ? `${round(targetValue, item.unit === "kcal" ? 0 : 1)}${item.unit}` : "not set"}
                 </p>
-                <p className={`mt-2 text-sm font-semibold ${toneClass}`}>
-                  {targetValue ? `${round(progress, 0)}% reached` : "Set a target to track progress"}
+                <p className={`mt-1 text-xs font-semibold ${toneClass}`}>
+                  {targetValue ? `${round(progress, 0)}% reached` : "Set target"}
                 </p>
               </div>
             </div>
-          </div>
-        );
-      })}
-    </div>
+          );
+        })}
+      </div>
+
+      <div className="hidden grid-cols-1 gap-3 sm:grid sm:grid-cols-2 xl:grid-cols-4">
+        {items.map((item) => {
+          const targetValue = targets ? targets[item.key] : 0;
+          const progress = targetValue > 0 ? (item.actual / targetValue) * 100 : 0;
+          const displayProgress = Math.max(0, Math.min(progress, 100));
+          const radius = 28;
+          const circumference = 2 * Math.PI * radius;
+          const offset = circumference - (displayProgress / 100) * circumference;
+          const toneClass = progress > 100 ? "text-[#b14646]" : "text-[#245b35]";
+          const strokeColor = progress > 100 ? "#b14646" : "#245b35";
+
+          return (
+            <div key={item.key} className="rounded-lg border border-[#dbe5d8] bg-white p-4">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm font-medium text-[#5b685a]">{item.label}</span>
+                <item.icon className="size-4 text-[#4f7f5d]" />
+              </div>
+
+              <div className="mt-4 flex items-center gap-4">
+                <svg width="84" height="84" viewBox="0 0 84 84" className="shrink-0">
+                  <circle cx="42" cy="42" r={radius} fill="none" stroke="#e5eee2" strokeWidth="8" />
+                  <circle
+                    cx="42"
+                    cy="42"
+                    r={radius}
+                    fill="none"
+                    stroke={strokeColor}
+                    strokeWidth="8"
+                    strokeLinecap="round"
+                    strokeDasharray={circumference}
+                    strokeDashoffset={offset}
+                    transform="rotate(-90 42 42)"
+                  />
+                  <text x="42" y="40" textAnchor="middle" className="fill-[#172117] text-[15px] font-semibold">
+                    {Math.round(displayProgress)}%
+                  </text>
+                  <text x="42" y="54" textAnchor="middle" className="fill-[#6a7669] text-[10px] font-medium">
+                    of goal
+                  </text>
+                </svg>
+
+                <div className="min-w-0 flex-1">
+                  <p className="text-2xl font-semibold text-[#172117]">
+                    {round(item.actual, item.unit === "kcal" ? 0 : 1)}
+                    {item.unit}
+                  </p>
+                  <p className="mt-1 text-xs text-[#6a7669]">
+                    Target {targetValue ? `${round(targetValue, item.unit === "kcal" ? 0 : 1)}${item.unit}` : "not set"}
+                  </p>
+                  <p className={`mt-2 text-sm font-semibold ${toneClass}`}>
+                    {targetValue ? `${round(progress, 0)}% reached` : "Set a target to track progress"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </>
   );
 }
 

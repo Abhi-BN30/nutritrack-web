@@ -498,10 +498,10 @@ function getHeaderHighlights(tab: Tab, data: DashboardData): HeaderHighlight[] {
       ];
     case "graphs":
       return [
-        { label: "Nutrition days", value: `${dailyNutrition.length}`, helper: "Chart-ready food log days", icon: BarChart3 },
-        { label: "Avg daily calories", value: avgDailyCalories === null ? "-" : `${round(avgDailyCalories, 0)} kcal`, helper: "Across all tracked nutrition days", icon: Apple },
-        { label: "Avg daily proteins", value: avgDailyProteins === null ? "-" : `${round(avgDailyProteins)} g`, helper: "Across all tracked nutrition days", icon: Activity },
-        { label: "Medical points", value: `${data.medicalRecords.length}`, helper: "Biometric records available for charts", icon: HeartPulse },
+        { label: "Target calories", value: data.selectedUser.activeTargets ? `${round(data.selectedUser.activeTargets.targetCalories, 0)} kcal` : "-", helper: "Current calorie target for graphs", icon: Apple },
+        { label: "Target carbs", value: data.selectedUser.activeTargets ? `${round(data.selectedUser.activeTargets.targetCarbs)} g` : "-", helper: "Current carbs target for graphs", icon: BarChart3 },
+        { label: "Target proteins", value: data.selectedUser.activeTargets ? `${round(data.selectedUser.activeTargets.targetProteins)} g` : "-", helper: "Current protein target for graphs", icon: Activity },
+        { label: "Target fats", value: data.selectedUser.activeTargets ? `${round(data.selectedUser.activeTargets.targetFats)} g` : "-", helper: "Current fats target for graphs", icon: HeartPulse },
       ];
     case "database":
       return [
@@ -1012,11 +1012,6 @@ function Graphs({ data }: { data: DashboardData }) {
                   </LineChart>
                 </ResponsiveContainer>
               </div>
-              <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                <MiniMetric label="Latest protein/carb ratio" value={latestNutrition?.proteinCarbRatio != null ? round(latestNutrition.proteinCarbRatio) : "-"} helper="Average across the latest visible day" />
-                <MiniMetric label="Latest proteins" value={latestNutrition ? `${round(latestNutrition.proteins)} g` : "-"} helper="Total proteins on latest visible nutrition day" />
-                <MiniMetric label="Latest carbs" value={latestNutrition ? `${round(latestNutrition.carbs)} g` : "-"} helper="Total carbs on latest visible nutrition day" />
-              </div>
             </>
           )}
         </section>
@@ -1062,11 +1057,6 @@ function Graphs({ data }: { data: DashboardData }) {
                     <Line yAxisId="bp" type="monotone" dataKey="bpLow" name="BP Low" stroke="#e18f3f" strokeWidth={2.5} dot={{ r: 2 }} activeDot={{ r: 5 }} />
                   </LineChart>
                 </ResponsiveContainer>
-              </div>
-              <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                <MiniMetric label="Latest BP" value={latestMedical ? `${round(latestMedical.bpHigh, 0)}/${round(latestMedical.bpLow, 0)}` : "-"} helper="Most recent medical entry inside the selected range" />
-                <MiniMetric label="Latest weight" value={latestMedical ? `${round(latestMedical.weight)} kg` : "-"} helper="Most recent medical entry inside the selected range" />
-                <MiniMetric label="Total visible records" value={`${filteredBiometricSeries.length}`} helper="Medical history points inside the selected range" />
               </div>
             </>
           )}

@@ -16,15 +16,13 @@ export async function requireUser() {
     select: {
       id: true,
       email: true,
+      mobileNumber: true,
       name: true,
       role: true,
       age: true,
       gender: true,
       conditions: true,
-      targetCarbs: true,
-      targetProteins: true,
-      targetFats: true,
-      targetCalories: true,
+      startDate: true,
     },
   });
 

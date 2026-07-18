@@ -12,6 +12,7 @@ import {
   foodLogSchema,
   loginSchema,
   medicalRecordSchema,
+  nutritionTargetSchema,
   pinUpdateSchema,
   profileSchema,
   userSchema,
@@ -27,12 +28,29 @@ function formValue(formData: FormData, key: string) {
   return typeof value === "string" ? value : "";
 }
 
+function normalizeMobile(value: string) {
+  return value.replace(/\D/g, "");
+}
+
+function normalizeIdentifier(value: string) {
+  const trimmed = value.trim();
+  return trimmed.includes("@") ? trimmed.toLowerCase() : normalizeMobile(trimmed);
+}
+
 function startOfDay(date: Date) {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
 }
 
 function endOfDay(date: Date) {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() + 1));
+}
+
+function calculateProteinCarbRatio(proteins: number, carbs: number) {
+  if (carbs <= 0) {
+    return null;
+  }
+
+  return Math.round((proteins / carbs) * 10) / 10;
 }
 
 function actionError(error: unknown, fallback: string): ActionState {
@@ -58,18 +76,23 @@ async function resolveWritableUserId(requestedUserId: string | undefined) {
 
 export async function signIn(_state: ActionState, formData: FormData): Promise<ActionState> {
   const parsed = loginSchema.safeParse({
-    email: formValue(formData, "email"),
+    identifier: formValue(formData, "identifier"),
     pin: formValue(formData, "pin"),
   });
 
   if (!parsed.success) {
-    return { message: "Enter a valid email and 4 digit PIN." };
+    return { message: "Enter a valid email or mobile number and 4 digit PIN." };
   }
 
-  const user = await prisma.user.findUnique({ where: { email: parsed.data.email } });
+  const identifier = normalizeIdentifier(parsed.data.identifier);
+  const where = identifier.includes("@")
+    ? { email: identifier }
+    : { mobileNumber: identifier };
+
+  const user = await prisma.user.findFirst({ where });
 
   if (!user || !(await bcrypt.compare(parsed.data.pin, user.pinHash))) {
-    return { message: "Email or PIN is incorrect." };
+    return { message: "Email/mobile or PIN is incorrect." };
   }
 
   await createSession({
@@ -96,26 +119,48 @@ export async function createUser(_state: ActionState, formData: FormData): Promi
 
   const parsed = userSchema.safeParse({
     email: formValue(formData, "email"),
+    mobileNumber: normalizeMobile(formValue(formData, "mobileNumber")),
     pin: formValue(formData, "pin"),
-    role: formValue(formData, "role") || "PATIENT",
+    role: formValue(formData, "role") || "USER",
     name: formValue(formData, "name"),
     age: formValue(formData, "age"),
     gender: formValue(formData, "gender"),
     conditions: formValue(formData, "conditions"),
+    startDate: formValue(formData, "startDate"),
+    targetEffectiveFrom: formValue(formData, "targetEffectiveFrom"),
+    targetCarbs: formValue(formData, "targetCarbs"),
+    targetProteins: formValue(formData, "targetProteins"),
+    targetFats: formValue(formData, "targetFats"),
+    targetCalories: formValue(formData, "targetCalories"),
   });
 
   if (!parsed.success) {
-    return { message: "Check the user details and try again." };
+    return { message: "Check the user details, mobile number, start date, and target values." };
   }
 
   try {
-    const { pin, ...rest } = parsed.data;
+    const { pin, targetEffectiveFrom, targetCarbs, targetProteins, targetFats, targetCalories, ...userData } =
+      parsed.data;
 
-    await prisma.user.create({
-      data: {
-        ...rest,
-        pinHash: await bcrypt.hash(pin, 10),
-      },
+    await prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          ...userData,
+          startDate: startOfDay(userData.startDate),
+          pinHash: await bcrypt.hash(pin, 10),
+        },
+      });
+
+      await tx.nutritionTarget.create({
+        data: {
+          userId: user.id,
+          effectiveFrom: startOfDay(targetEffectiveFrom),
+          targetCarbs,
+          targetProteins,
+          targetFats,
+          targetCalories,
+        },
+      });
     });
   } catch (error) {
     return actionError(error, "Unable to create the user right now.");
@@ -134,23 +179,25 @@ export async function updateProfile(_state: ActionState, formData: FormData): Pr
 
   const parsed = profileSchema.safeParse({
     name: formValue(formData, "name"),
+    email: formValue(formData, "email"),
+    mobileNumber: normalizeMobile(formValue(formData, "mobileNumber")),
     age: formValue(formData, "age"),
     gender: formValue(formData, "gender"),
     conditions: formValue(formData, "conditions"),
-    targetCarbs: formValue(formData, "targetCarbs"),
-    targetProteins: formValue(formData, "targetProteins"),
-    targetFats: formValue(formData, "targetFats"),
-    targetCalories: formValue(formData, "targetCalories"),
+    startDate: formValue(formData, "startDate"),
   });
 
   if (!parsed.success) {
-    return { message: "Check profile targets and try again." };
+    return { message: "Check profile details and try again." };
   }
 
   try {
     await prisma.user.update({
       where: { id: targetUserId },
-      data: parsed.data,
+      data: {
+        ...parsed.data,
+        startDate: startOfDay(parsed.data.startDate),
+      },
     });
   } catch (error) {
     return actionError(error, "Unable to save the profile right now.");
@@ -158,6 +205,55 @@ export async function updateProfile(_state: ActionState, formData: FormData): Pr
 
   revalidatePath("/dashboard");
   return { ok: true, message: "Profile saved." };
+}
+
+export async function saveNutritionTarget(
+  _state: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const userId = await resolveWritableUserId(formValue(formData, "userId") || undefined);
+  const parsed = nutritionTargetSchema.safeParse({
+    userId,
+    effectiveFrom: formValue(formData, "effectiveFrom"),
+    targetCarbs: formValue(formData, "targetCarbs"),
+    targetProteins: formValue(formData, "targetProteins"),
+    targetFats: formValue(formData, "targetFats"),
+    targetCalories: formValue(formData, "targetCalories"),
+  });
+
+  if (!parsed.success) {
+    return { message: "Check target values and the effective date." };
+  }
+
+  try {
+    await prisma.nutritionTarget.upsert({
+      where: {
+        userId_effectiveFrom: {
+          userId,
+          effectiveFrom: startOfDay(parsed.data.effectiveFrom),
+        },
+      },
+      update: {
+        targetCarbs: parsed.data.targetCarbs,
+        targetProteins: parsed.data.targetProteins,
+        targetFats: parsed.data.targetFats,
+        targetCalories: parsed.data.targetCalories,
+      },
+      create: {
+        userId,
+        effectiveFrom: startOfDay(parsed.data.effectiveFrom),
+        targetCarbs: parsed.data.targetCarbs,
+        targetProteins: parsed.data.targetProteins,
+        targetFats: parsed.data.targetFats,
+        targetCalories: parsed.data.targetCalories,
+      },
+    });
+  } catch (error) {
+    return actionError(error, "Unable to save target values right now.");
+  }
+
+  revalidatePath("/dashboard");
+  return { ok: true, message: "Nutrition targets saved." };
 }
 
 export async function updatePin(_state: ActionState, formData: FormData): Promise<ActionState> {
@@ -304,8 +400,10 @@ export async function saveMedicalRecord(
 }
 
 export async function saveFoodLog(_state: ActionState, formData: FormData): Promise<ActionState> {
+  const actor = await requireUser();
   const userId = await resolveWritableUserId(formValue(formData, "userId") || undefined);
   const parsed = foodLogSchema.safeParse({
+    id: formValue(formData, "id") || undefined,
     userId,
     foodItemId: formValue(formData, "foodItemId"),
     date: formValue(formData, "date"),
@@ -324,8 +422,39 @@ export async function saveFoodLog(_state: ActionState, formData: FormData): Prom
   }
 
   const scale = parsed.data.quantityGms / 100;
+  const proteins = food.proteins * scale;
+  const carbs = food.carbohydrates * scale;
+  const fats = food.fats * scale;
+  const calories = food.calories * scale;
+  const proteinCarbRatio = calculateProteinCarbRatio(proteins, carbs);
 
   try {
+    if (parsed.data.id) {
+      const existing = await prisma.foodLog.findUnique({ where: { id: parsed.data.id } });
+      if (!existing || (actor.role !== "ADMIN" && existing.userId !== actor.id)) {
+        return { message: "You cannot edit this log entry." };
+      }
+
+      await prisma.foodLog.update({
+        where: { id: parsed.data.id },
+        data: {
+          userId,
+          foodItemId: food.id,
+          date: startOfDay(parsed.data.date),
+          dishName: parsed.data.dishName,
+          quantityGms: parsed.data.quantityGms,
+          carbs,
+          proteins,
+          fats,
+          calories,
+          proteinCarbRatio,
+        },
+      });
+
+      revalidatePath("/dashboard");
+      return { ok: true, message: "Food log updated." };
+    }
+
     await prisma.foodLog.create({
       data: {
         userId,
@@ -333,10 +462,11 @@ export async function saveFoodLog(_state: ActionState, formData: FormData): Prom
         date: startOfDay(parsed.data.date),
         dishName: parsed.data.dishName,
         quantityGms: parsed.data.quantityGms,
-        carbs: food.carbohydrates * scale,
-        proteins: food.proteins * scale,
-        fats: food.fats * scale,
-        calories: food.calories * scale,
+        carbs,
+        proteins,
+        fats,
+        calories,
+        proteinCarbRatio,
       },
     });
   } catch (error) {

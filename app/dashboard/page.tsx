@@ -18,8 +18,15 @@ function displayDate(date: Date) {
   return new Intl.DateTimeFormat("en-IN", {
     day: "2-digit",
     month: "short",
-    year: "2-digit",
+    year: "numeric",
   }).format(date);
+}
+
+function dayDiffInclusive(startDate: Date) {
+  const start = new Date(Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), startDate.getUTCDate()));
+  const today = new Date();
+  const end = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
+  return Math.max(1, Math.floor((end.getTime() - start.getTime()) / 86400000) + 1);
 }
 
 export default async function DashboardPage({ searchParams }: DashboardPageProps) {
@@ -27,21 +34,29 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const params = await searchParams;
   const isAdmin = currentUser.role === "ADMIN";
 
-  const allUsers = isAdmin
+  const users = isAdmin
     ? await prisma.user.findMany({
         orderBy: [{ role: "asc" }, { name: "asc" }],
         select: {
           id: true,
           email: true,
+          mobileNumber: true,
           name: true,
           role: true,
           age: true,
           gender: true,
           conditions: true,
-          targetCarbs: true,
-          targetProteins: true,
-          targetFats: true,
-          targetCalories: true,
+          startDate: true,
+          nutritionTargets: {
+            orderBy: { effectiveFrom: "desc" },
+            take: 1,
+            select: {
+              targetCarbs: true,
+              targetProteins: true,
+              targetFats: true,
+              targetCalories: true,
+            },
+          },
           _count: {
             select: {
               foodLogs: true,
@@ -53,56 +68,96 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     : [];
 
   const targetUserId = isAdmin && params.userId ? params.userId : currentUser.id;
-  const selectedUser =
-    (isAdmin
-      ? allUsers.find((user) => user.id === targetUserId)
-      : { ...currentUser, _count: { foodLogs: 0, medicalRecords: 0 } }) ??
-    allUsers.find((user) => user.role === "PATIENT") ??
-    { ...currentUser, _count: { foodLogs: 0, medicalRecords: 0 } };
 
-  const [foodItems, foodLogs, medicalRecords, selectedFoodLogCount, selectedMedicalCount, allFoodLogs, allMedicalRecords, groupedFoodLogs] =
+  const [selectedUserDb, foodItems, foodLogs, medicalRecords, targetProfiles, trackedDayGroups, allFoodLogs, allMedicalRecords] =
     await Promise.all([
+      prisma.user.findUnique({
+        where: { id: targetUserId },
+        select: {
+          id: true,
+          email: true,
+          mobileNumber: true,
+          name: true,
+          role: true,
+          age: true,
+          gender: true,
+          conditions: true,
+          startDate: true,
+          nutritionTargets: {
+            orderBy: [{ effectiveFrom: "asc" }, { createdAt: "asc" }],
+            select: {
+              id: true,
+              effectiveFrom: true,
+              targetCarbs: true,
+              targetProteins: true,
+              targetFats: true,
+              targetCalories: true,
+            },
+          },
+          _count: {
+            select: {
+              foodLogs: true,
+              medicalRecords: true,
+            },
+          },
+        },
+      }),
       prisma.foodItem.findMany({ orderBy: { itemName: "asc" } }),
       prisma.foodLog.findMany({
-        where: { userId: selectedUser.id },
+        where: { userId: targetUserId },
         include: { foodItem: true },
         orderBy: [{ date: "desc" }, { createdAt: "desc" }],
-        take: 80,
       }),
       prisma.medicalRecord.findMany({
-        where: { userId: selectedUser.id },
+        where: { userId: targetUserId },
         orderBy: [{ date: "desc" }, { createdAt: "desc" }],
-        take: 40,
       }),
-      prisma.foodLog.count({ where: { userId: selectedUser.id } }),
-      prisma.medicalRecord.count({ where: { userId: selectedUser.id } }),
+      prisma.nutritionTarget.findMany({
+        where: { userId: targetUserId },
+        orderBy: [{ effectiveFrom: "asc" }, { createdAt: "asc" }],
+      }),
+      prisma.foodLog.groupBy({
+        by: ["date"],
+        where: { userId: targetUserId },
+      }),
       isAdmin
         ? prisma.foodLog.findMany({
-            include: { user: true, foodItem: true },
-            orderBy: [{ date: "desc" }, { createdAt: "desc" }],
-            take: 1000,
+            select: { userId: true, date: true, calories: true, carbs: true, proteins: true, fats: true },
           })
         : Promise.resolve([]),
       isAdmin
         ? prisma.medicalRecord.findMany({
-            include: { user: true },
+            select: { userId: true, date: true, bmi: true, bpLow: true, bpHigh: true },
             orderBy: [{ date: "desc" }, { createdAt: "desc" }],
-            take: 1000,
-          })
-        : Promise.resolve([]),
-      isAdmin
-        ? prisma.foodLog.groupBy({
-            by: ["userId"],
-            _count: { _all: true },
-            _avg: {
-              calories: true,
-              carbs: true,
-              proteins: true,
-              fats: true,
-            },
           })
         : Promise.resolve([]),
     ]);
+
+  if (!selectedUserDb) {
+    throw new Error("Selected user was not found.");
+  }
+
+  const selectedTrackedDays = trackedDayGroups.length;
+  const selectedDaysOnApp = dayDiffInclusive(selectedUserDb.startDate);
+  const selectedTrackingRate = selectedDaysOnApp > 0 ? (selectedTrackedDays / selectedDaysOnApp) * 100 : 0;
+  const selectedActiveTarget = selectedUserDb.nutritionTargets.at(-1) ?? null;
+
+  const daySetByUser = new Map<string, Set<string>>();
+  const totalsByUser = new Map<string, { logs: number; calories: number; carbs: number; proteins: number; fats: number }>();
+  allFoodLogs.forEach((log) => {
+    const key = isoDate(log.date);
+    const set = daySetByUser.get(log.userId) ?? new Set<string>();
+    set.add(key);
+    daySetByUser.set(log.userId, set);
+
+    const totals = totalsByUser.get(log.userId) ?? { logs: 0, calories: 0, carbs: 0, proteins: 0, fats: 0 };
+    totals.logs += 1;
+    totals.calories += log.calories;
+    totals.carbs += log.carbs;
+    totals.proteins += log.proteins;
+    totals.fats += log.fats;
+    totalsByUser.set(log.userId, totals);
+  });
 
   const latestMedicalByUser = new Map<string, (typeof allMedicalRecords)[number]>();
   allMedicalRecords.forEach((record) => {
@@ -111,23 +166,26 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     }
   });
 
-  const groupedFoodByUser = new Map(groupedFoodLogs.map((entry) => [entry.userId, entry]));
-
   const comparisonRows = isAdmin
-    ? allUsers.map((user) => {
-        const logGroup = groupedFoodByUser.get(user.id);
+    ? users.map((user) => {
+        const totals = totalsByUser.get(user.id) ?? { logs: 0, calories: 0, carbs: 0, proteins: 0, fats: 0 };
+        const trackedDays = daySetByUser.get(user.id)?.size ?? 0;
+        const daysOnApp = dayDiffInclusive(user.startDate);
         const latestMedical = latestMedicalByUser.get(user.id);
 
         return {
           userId: user.id,
           name: user.name,
           email: user.email,
+          mobileNumber: user.mobileNumber,
           role: user.role,
-          totalLogs: logGroup?._count._all ?? 0,
-          avgCaloriesPerLog: logGroup?._avg.calories ?? 0,
-          avgCarbsPerLog: logGroup?._avg.carbs ?? 0,
-          avgProteinsPerLog: logGroup?._avg.proteins ?? 0,
-          avgFatsPerLog: logGroup?._avg.fats ?? 0,
+          totalLogs: totals.logs,
+          daysTracked: trackedDays,
+          trackingRate: daysOnApp > 0 ? (trackedDays / daysOnApp) * 100 : 0,
+          avgCaloriesPerLog: totals.logs > 0 ? totals.calories / totals.logs : 0,
+          avgCarbsPerLog: totals.logs > 0 ? totals.carbs / totals.logs : 0,
+          avgProteinsPerLog: totals.logs > 0 ? totals.proteins / totals.logs : 0,
+          avgFatsPerLog: totals.logs > 0 ? totals.fats / totals.logs : 0,
           latestBmi: latestMedical?.bmi ?? null,
           latestBpLow: latestMedical?.bpLow ?? null,
           latestBpHigh: latestMedical?.bpHigh ?? null,
@@ -135,14 +193,6 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         };
       })
     : [];
-
-  const selectedLatestMedical = medicalRecords[0] ?? null;
-  const selectedTotals = {
-    carbs: foodLogs.reduce((sum, log) => sum + log.carbs, 0),
-    proteins: foodLogs.reduce((sum, log) => sum + log.proteins, 0),
-    fats: foodLogs.reduce((sum, log) => sum + log.fats, 0),
-    calories: foodLogs.reduce((sum, log) => sum + log.calories, 0),
-  };
 
   const data: DashboardData = {
     currentUser: {
@@ -152,35 +202,61 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       role: currentUser.role,
     },
     selectedUser: {
-      id: selectedUser.id,
-      email: selectedUser.email,
-      name: selectedUser.name,
-      role: selectedUser.role,
-      age: selectedUser.age,
-      gender: selectedUser.gender,
-      conditions: selectedUser.conditions,
-      targetCarbs: selectedUser.targetCarbs,
-      targetProteins: selectedUser.targetProteins,
-      targetFats: selectedUser.targetFats,
-      targetCalories: selectedUser.targetCalories,
-      foodLogs: selectedFoodLogCount,
-      medicalRecords: selectedMedicalCount,
+      id: selectedUserDb.id,
+      email: selectedUserDb.email,
+      mobileNumber: selectedUserDb.mobileNumber,
+      name: selectedUserDb.name,
+      role: selectedUserDb.role,
+      age: selectedUserDb.age,
+      gender: selectedUserDb.gender,
+      conditions: selectedUserDb.conditions,
+      startDate: isoDate(selectedUserDb.startDate),
+      displayStartDate: displayDate(selectedUserDb.startDate),
+      daysOnApp: selectedDaysOnApp,
+      daysTracked: selectedTrackedDays,
+      trackingRate: selectedTrackingRate,
+      activeTargets: selectedActiveTarget
+        ? {
+            targetCarbs: selectedActiveTarget.targetCarbs,
+            targetProteins: selectedActiveTarget.targetProteins,
+            targetFats: selectedActiveTarget.targetFats,
+            targetCalories: selectedActiveTarget.targetCalories,
+          }
+        : null,
+      foodLogs: selectedUserDb._count.foodLogs,
+      medicalRecords: selectedUserDb._count.medicalRecords,
     },
-    users: allUsers.map((user) => ({
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-      age: user.age,
-      gender: user.gender,
-      conditions: user.conditions,
-      targetCarbs: user.targetCarbs,
-      targetProteins: user.targetProteins,
-      targetFats: user.targetFats,
-      targetCalories: user.targetCalories,
-      foodLogs: user._count.foodLogs,
-      medicalRecords: user._count.medicalRecords,
-    })),
+    users: users.map((user) => {
+      const trackedDays = daySetByUser.get(user.id)?.size ?? 0;
+      const daysOnApp = dayDiffInclusive(user.startDate);
+      const activeTarget = user.nutritionTargets[0] ?? null;
+
+      return {
+        id: user.id,
+        email: user.email,
+        mobileNumber: user.mobileNumber,
+        name: user.name,
+        role: user.role,
+        age: user.age,
+        gender: user.gender,
+        conditions: user.conditions,
+        startDate: isoDate(user.startDate),
+        displayStartDate: displayDate(user.startDate),
+        daysOnApp,
+        daysTracked: trackedDays,
+        trackingRate: daysOnApp > 0 ? (trackedDays / daysOnApp) * 100 : 0,
+        activeTargets: activeTarget
+          ? {
+              targetCarbs: activeTarget.targetCarbs,
+              targetProteins: activeTarget.targetProteins,
+              targetFats: activeTarget.targetFats,
+              targetCalories: activeTarget.targetCalories,
+            }
+          : null,
+        foodLogs: user._count.foodLogs,
+        medicalRecords: user._count.medicalRecords,
+      };
+    }),
     foodItems: foodItems.map((item) => ({
       id: item.id,
       itemName: item.itemName,
@@ -199,6 +275,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       proteins: log.proteins,
       fats: log.fats,
       calories: log.calories,
+      proteinCarbRatio: log.proteinCarbRatio,
+      foodItemId: log.foodItemId,
       foodItem: log.foodItem.itemName,
     })),
     medicalRecords: medicalRecords.map((record) => ({
@@ -211,28 +289,19 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       bpLow: record.bpLow,
       bpHigh: record.bpHigh,
     })),
-    selectedSummary: {
-      totalFoodLogs: selectedFoodLogCount,
-      totalMedicalRecords: selectedMedicalCount,
-      totalCalories: selectedTotals.calories,
-      totalCarbs: selectedTotals.carbs,
-      totalProteins: selectedTotals.proteins,
-      totalFats: selectedTotals.fats,
-      latestMedical: selectedLatestMedical
-        ? {
-            date: displayDate(selectedLatestMedical.date),
-            bmi: selectedLatestMedical.bmi,
-            bpLow: selectedLatestMedical.bpLow,
-            bpHigh: selectedLatestMedical.bpHigh,
-            weight: selectedLatestMedical.weight,
-            height: selectedLatestMedical.height,
-          }
-        : null,
-    },
+    targetProfiles: targetProfiles.map((target) => ({
+      id: target.id,
+      effectiveFrom: isoDate(target.effectiveFrom),
+      displayEffectiveFrom: displayDate(target.effectiveFrom),
+      targetCarbs: target.targetCarbs,
+      targetProteins: target.targetProteins,
+      targetFats: target.targetFats,
+      targetCalories: target.targetCalories,
+    })),
     adminMetrics: isAdmin
       ? {
-          totalPatients: allUsers.filter((user) => user.role === "PATIENT").length,
-          totalAdmins: allUsers.filter((user) => user.role === "ADMIN").length,
+          totalUsers: users.filter((user) => user.role === "USER").length,
+          totalAdmins: users.filter((user) => user.role === "ADMIN").length,
           totalFoodLogs: allFoodLogs.length,
           totalMedicalRecords: allMedicalRecords.length,
           avgCalories:
@@ -242,10 +311,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           avgBmi:
             allMedicalRecords.length === 0
               ? 0
-              : allMedicalRecords.reduce((sum, record) => sum + record.bmi, 0) /
-                allMedicalRecords.length,
-          highBpCount: allMedicalRecords.filter((record) => record.bpHigh >= 130 || record.bpLow >= 80)
-            .length,
+              : allMedicalRecords.reduce((sum, record) => sum + record.bmi, 0) / allMedicalRecords.length,
+          highBpCount: allMedicalRecords.filter((record) => record.bpHigh >= 130 || record.bpLow >= 80).length,
         }
       : null,
     comparisonRows,

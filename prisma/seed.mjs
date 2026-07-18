@@ -30,23 +30,54 @@ const foods = [
   ["Paneer", 3.4, 18.3, 20.8, 265],
 ];
 
-async function upsertUser({ email, pin, name, role }) {
-  if (!email || !pin || !name) {
+function startOfDay(date) {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+}
+
+async function upsertUser({ email, mobileNumber, pin, name, role }) {
+  if (!email || !mobileNumber || !pin || !name) {
     return;
   }
 
-  await prisma.user.upsert({
+  const user = await prisma.user.upsert({
     where: { email },
     update: {
       name,
       role,
+      mobileNumber,
+      startDate: startOfDay(new Date()),
       pinHash: await bcrypt.hash(pin, 10),
     },
     create: {
       email,
+      mobileNumber,
       name,
       role,
+      startDate: startOfDay(new Date()),
       pinHash: await bcrypt.hash(pin, 10),
+    },
+  });
+
+  await prisma.nutritionTarget.upsert({
+    where: {
+      userId_effectiveFrom: {
+        userId: user.id,
+        effectiveFrom: startOfDay(new Date()),
+      },
+    },
+    update: {
+      targetCarbs: 80,
+      targetProteins: 60,
+      targetFats: 150,
+      targetCalories: 2000,
+    },
+    create: {
+      userId: user.id,
+      effectiveFrom: startOfDay(new Date()),
+      targetCarbs: 80,
+      targetProteins: 60,
+      targetFats: 150,
+      targetCalories: 2000,
     },
   });
 }
@@ -64,16 +95,18 @@ async function main() {
 
   await upsertUser({
     email: process.env.SEED_ADMIN_EMAIL,
+    mobileNumber: process.env.SEED_ADMIN_MOBILE || "9000000001",
     pin: process.env.SEED_ADMIN_PIN,
     name: process.env.SEED_ADMIN_NAME || "Primary Admin",
     role: "ADMIN",
   });
 
   await upsertUser({
-    email: process.env.SEED_PATIENT_EMAIL,
-    pin: process.env.SEED_PATIENT_PIN,
-    name: process.env.SEED_PATIENT_NAME || "Sample Patient",
-    role: "PATIENT",
+    email: process.env.SEED_USER_EMAIL || process.env.SEED_PATIENT_EMAIL,
+    mobileNumber: process.env.SEED_USER_MOBILE || "9000000002",
+    pin: process.env.SEED_USER_PIN || process.env.SEED_PATIENT_PIN,
+    name: process.env.SEED_USER_NAME || process.env.SEED_PATIENT_NAME || "Sample User",
+    role: "USER",
   });
 
   console.log("NutriTrack seed completed.");

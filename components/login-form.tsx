@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { LockKeyhole, Mail } from "lucide-react";
+import { LockKeyhole, Mail, Smartphone } from "lucide-react";
 import { signIn, type ActionState } from "@/lib/actions";
 
 const initialState: ActionState = {};
@@ -18,24 +18,25 @@ export function LoginForm() {
         <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#4f7f5d]">
           Sign in
         </p>
-        <h2 className="mt-2 text-2xl font-semibold">Email and 4 digit PIN</h2>
+        <h2 className="mt-2 text-2xl font-semibold">Email or mobile with 4 digit PIN</h2>
         <p className="mt-2 text-sm leading-6 text-[#667266]">
-          Admins and patients use the same entry point. Your role decides which dashboard opens.
+          Admins and users use the same entry point. Your role decides which dashboard opens.
         </p>
       </div>
 
       <div className="mt-7 space-y-4">
         <label className="block">
-          <span className="mb-2 block text-sm font-medium">Email</span>
+          <span className="mb-2 block text-sm font-medium">Email or mobile</span>
           <span className="flex items-center gap-2 rounded-md border border-[#ccd8c9] bg-white px-3">
             <Mail className="size-4 text-[#6c7a6b]" />
+            <Smartphone className="size-4 text-[#6c7a6b]" />
             <input
-              name="email"
-              type="email"
+              name="identifier"
+              type="text"
               required
-              autoComplete="email"
+              autoComplete="username"
               className="h-11 w-full bg-transparent text-sm outline-none"
-              placeholder="patient@example.com"
+              placeholder="user@example.com or 9876543210"
             />
           </span>
         </label>

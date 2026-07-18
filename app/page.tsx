@@ -29,7 +29,7 @@ export default async function Home() {
               Food logs, medical markers, and admin analytics in one installable web app.
             </h1>
             <p className="mt-6 max-w-xl text-base leading-7 text-[#526052]">
-              Patients log meals and biometrics from any device. Admins review every patient,
+              Users log meals and biometrics from any device. Admins review every user,
               compare trends, and maintain one centralized nutrition master table.
             </p>
             {/* <div className="mt-8 grid max-w-xl grid-cols-2 gap-3 sm:grid-cols-4">
@@ -52,7 +52,7 @@ export default async function Home() {
 
           {/* <div className="grid gap-3 text-sm text-[#6a7669] sm:grid-cols-3">
             <div className="rounded-lg border border-[#dfe8dc] bg-white px-4 py-3">
-              Email + PIN only authentication
+              Email/mobile + PIN authentication
             </div>
             <div className="rounded-lg border border-[#dfe8dc] bg-white px-4 py-3">
               Responsive patient and admin workspace
@@ -70,3 +70,4 @@ export default async function Home() {
     </main>
   );
 }
+

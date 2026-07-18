@@ -7,29 +7,44 @@ datasource db {
 }
 
 enum Role {
-  PATIENT
+  USER
   ADMIN
 }
 
 model User {
-  id             String          @id @default(cuid())
-  email          String          @unique
-  pinHash        String
-  role           Role            @default(PATIENT)
-  name           String
-  age            Int?
-  gender         String?
-  conditions     String?
-  targetCarbs    Float           @default(80)
-  targetProteins Float           @default(60)
-  targetFats     Float           @default(150)
-  targetCalories Float           @default(2000)
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  foodLogs       FoodLog[]
-  medicalRecords MedicalRecord[]
+  id               String            @id @default(cuid())
+  email            String            @unique
+  mobileNumber     String            @unique
+  pinHash          String
+  role             Role              @default(USER)
+  name             String
+  age              Int?
+  gender           String?
+  conditions       String?
+  startDate        DateTime          @default(now())
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  foodLogs         FoodLog[]
+  medicalRecords   MedicalRecord[]
+  nutritionTargets NutritionTarget[]
 
   @@map("users")
+}
+
+model NutritionTarget {
+  id             String   @id @default(cuid())
+  userId         String
+  effectiveFrom  DateTime
+  targetCarbs    Float
+  targetProteins Float
+  targetFats     Float
+  targetCalories Float
+  createdAt      DateTime @default(now())
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, effectiveFrom])
+  @@index([userId, effectiveFrom])
+  @@map("nutrition_targets")
 }
 
 model FoodItem {
@@ -63,19 +78,20 @@ model MedicalRecord {
 }
 
 model FoodLog {
-  id          String   @id @default(cuid())
-  userId      String
-  foodItemId  String
-  date        DateTime @default(now())
-  dishName    String
-  quantityGms Float
-  carbs       Float
-  proteins    Float
-  fats        Float
-  calories    Float
-  createdAt   DateTime @default(now())
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  foodItem    FoodItem @relation(fields: [foodItemId], references: [id], onDelete: Restrict)
+  id               String   @id @default(cuid())
+  userId           String
+  foodItemId       String
+  date             DateTime @default(now())
+  dishName         String
+  quantityGms      Float
+  carbs            Float
+  proteins         Float
+  fats             Float
+  calories         Float
+  proteinCarbRatio Float?
+  createdAt        DateTime @default(now())
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  foodItem         FoodItem @relation(fields: [foodItemId], references: [id], onDelete: Restrict)
 
   @@index([userId, date])
   @@index([foodItemId])

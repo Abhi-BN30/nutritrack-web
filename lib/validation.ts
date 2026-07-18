@@ -18,27 +18,43 @@ const optionalPositiveInt = z.preprocess((value) => {
 }, z.coerce.number().int().positive().optional());
 
 export const pinSchema = z.string().regex(/^\d{4}$/, "PIN must be exactly 4 digits.");
+export const phoneSchema = z.string().trim().regex(/^\d{10,15}$/, "Mobile number must be 10 to 15 digits.");
 
 export const loginSchema = z.object({
-  email: z.email().trim().toLowerCase(),
+  identifier: z.string().trim().min(1, "Enter email or mobile number."),
   pin: pinSchema,
 });
 
 export const userSchema = z.object({
   email: z.email().trim().toLowerCase(),
+  mobileNumber: phoneSchema,
   pin: pinSchema,
-  role: z.enum(["PATIENT", "ADMIN"]).default("PATIENT"),
+  role: z.enum(["USER", "ADMIN"]).default("USER"),
   name: z.string().min(2).trim(),
   age: optionalPositiveInt,
   gender: optionalText,
   conditions: optionalText,
+  startDate: z.coerce.date(),
+  targetEffectiveFrom: z.coerce.date(),
+  targetCarbs: z.coerce.number().nonnegative(),
+  targetProteins: z.coerce.number().nonnegative(),
+  targetFats: z.coerce.number().nonnegative(),
+  targetCalories: z.coerce.number().nonnegative(),
 });
 
 export const profileSchema = z.object({
   name: z.string().min(2).trim(),
+  email: z.email().trim().toLowerCase(),
+  mobileNumber: phoneSchema,
   age: optionalPositiveInt,
   gender: optionalText,
   conditions: optionalText,
+  startDate: z.coerce.date(),
+});
+
+export const nutritionTargetSchema = z.object({
+  userId: z.string().optional(),
+  effectiveFrom: z.coerce.date(),
   targetCarbs: z.coerce.number().nonnegative(),
   targetProteins: z.coerce.number().nonnegative(),
   targetFats: z.coerce.number().nonnegative(),
@@ -67,6 +83,7 @@ export const medicalRecordSchema = z.object({
 });
 
 export const foodLogSchema = z.object({
+  id: z.string().optional(),
   userId: z.string().optional(),
   foodItemId: z.string().min(1),
   date: z.coerce.date(),

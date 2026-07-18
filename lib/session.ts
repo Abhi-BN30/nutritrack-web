@@ -3,7 +3,7 @@ import "server-only";
 import { cookies } from "next/headers";
 import { SignJWT, jwtVerify } from "jose";
 
-export type SessionRole = "PATIENT" | "ADMIN";
+export type SessionRole = "USER" | "ADMIN";
 
 export type SessionUser = {
   id: string;
@@ -50,7 +50,7 @@ export async function getSession(): Promise<SessionUser | null> {
       typeof payload.id !== "string" ||
       typeof payload.email !== "string" ||
       typeof payload.name !== "string" ||
-      (payload.role !== "PATIENT" && payload.role !== "ADMIN")
+      (payload.role !== "USER" && payload.role !== "ADMIN")
     ) {
       return null;
     }

@@ -276,7 +276,7 @@ function DonutChart({ percent, label }: { percent: number; label: string }) {
   const offset = circumference - (value / 100) * circumference;
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex w-full items-center justify-center gap-3 text-center sm:gap-4">
       <svg width="72" height="72" viewBox="0 0 72 72" className="shrink-0">
         <circle cx="36" cy="36" r={radius} fill="none" stroke="#e5eee2" strokeWidth="8" />
         <circle
@@ -295,9 +295,8 @@ function DonutChart({ percent, label }: { percent: number; label: string }) {
           {Math.round(value)}%
         </text>
       </svg>
-      <div>
+      <div className="text-left sm:text-center">
         <p className="text-sm font-semibold text-[#172117]">{label}</p>
-        {/* <p className="text-xs text-[#6a7669]">Based on tracked days / days on app</p> */}
       </div>
     </div>
   );
@@ -385,18 +384,20 @@ function PageHighlightTile({
 }) {
   return (
     <div className="aspect-square rounded-lg border border-[#e4ece1] bg-[#f9fbf8] px-3 py-3 sm:aspect-auto sm:min-h-[108px] sm:px-3 sm:py-2.5 lg:min-h-[96px]">
-      <div className="flex h-full flex-col justify-between gap-3">
+      <div className="grid h-full grid-rows-[auto,1fr] gap-2">
         <div className="flex items-start justify-between gap-2">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-[#6a7669] sm:text-[10px] lg:text-[11px]">
             {label}
           </p>
           <Icon className="size-3.5 shrink-0 text-[#4f7f5d]" />
         </div>
-        <div>
-          <p className="text-lg font-semibold leading-tight text-[#172117] sm:text-base lg:text-[1.15rem]">
-            {value}
-          </p>
-          {helper ? <p className="mt-1 text-[11px] text-[#6a7669]">{helper}</p> : null}
+        <div className="grid place-items-center text-center">
+          <div>
+            <p className="text-lg font-semibold leading-tight text-[#172117] sm:text-base lg:text-[1.15rem]">
+              {value}
+            </p>
+            {helper ? <p className="mt-1 text-[11px] text-[#6a7669]">{helper}</p> : null}
+          </div>
         </div>
       </div>
     </div>
@@ -664,7 +665,7 @@ function Shell({ data, tab, setTab, children }: { data: DashboardData; tab: Tab;
             <h2 className="mt-1 font-semibold">{activeTab.label} specific metrics</h2>
             {tab === "tracker" ? (
               <div className="mt-4 space-y-3">
-                <div className="rounded-lg border border-[#e4ece1] bg-[#f9fbf8] px-3 py-2">
+                <div className="rounded-lg border border-[#e4ece1] bg-[#f9fbf8] px-3 py-3 sm:px-4">
                   <DonutChart percent={data.selectedUser.trackingRate} label={`${data.selectedUser.daysTracked} tracked / ${data.selectedUser.daysOnApp} days`} />
                 </div>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">

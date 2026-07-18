@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useState } from "react";
 import {
   Activity,
   Apple,
@@ -166,6 +166,31 @@ function round(value: number | null | undefined, places = 1) {
   }
 
   return value.toFixed(places);
+}
+
+function shiftDate(date: string, days: number) {
+  const [year, month, day] = date.split("-").map(Number);
+  const utcDate = new Date(Date.UTC(year, month - 1, day));
+  utcDate.setUTCDate(utcDate.getUTCDate() + days);
+  return utcDate.toISOString().slice(0, 10);
+}
+
+function clampDate(value: string, minDate: string, maxDate: string) {
+  if (value < minDate) return minDate;
+  if (value > maxDate) return maxDate;
+  return value;
+}
+
+function formatRangeLabel(startDate: string, endDate: string) {
+  return startDate === endDate ? startDate : `${startDate} to ${endDate}`;
+}
+
+function average(values: number[]) {
+  if (values.length === 0) {
+    return null;
+  }
+
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
 function downloadCsv(filename: string, rows: (string | number | null)[][]) {
@@ -421,6 +446,77 @@ function TargetCards({ totals, targets }: { totals: Targets; targets: Targets | 
   );
 }
 
+type HeaderHighlight = {
+  label: string;
+  value: string;
+  helper: string;
+  icon: typeof Activity;
+};
+
+function getHeaderHighlights(tab: Tab, data: DashboardData): HeaderHighlight[] {
+  const latestFoodLog = [...data.foodLogs].sort((a, b) => a.date.localeCompare(b.date)).at(-1) ?? null;
+  const latestMedical = [...data.medicalRecords].sort((a, b) => a.date.localeCompare(b.date)).at(-1) ?? null;
+  const dailyNutrition = Array.from(
+    data.foodLogs.reduce((map, log) => {
+      const entry = map.get(log.date) ?? { calories: 0, proteins: 0 };
+      entry.calories += log.calories;
+      entry.proteins += log.proteins;
+      map.set(log.date, entry);
+      return map;
+    }, new Map<string, { calories: number; proteins: number }>()).values(),
+  );
+  const avgDailyCalories = average(dailyNutrition.map((entry) => entry.calories));
+  const avgDailyProteins = average(dailyNutrition.map((entry) => entry.proteins));
+  const avgFoodCalories = average(data.foodItems.map((item) => item.calories));
+  const avgFoodProteins = average(data.foodItems.map((item) => item.proteins));
+  const adminMetrics = data.adminMetrics;
+
+  switch (tab) {
+    case "tracker":
+      return [
+        { label: "Days tracked", value: `${data.selectedUser.daysTracked}`, helper: "Distinct intake days recorded", icon: Activity },
+        { label: "Tracking rate", value: `${Math.round(data.selectedUser.trackingRate)}%`, helper: "Tracked days over total days on app", icon: BarChart3 },
+        { label: "Latest log date", value: latestFoodLog?.displayDate ?? "-", helper: latestFoodLog ? `${round(latestFoodLog.calories, 0)} kcal in latest entry` : "No intake logged yet", icon: Apple },
+        { label: "Active target calories", value: data.selectedUser.activeTargets ? `${round(data.selectedUser.activeTargets.targetCalories, 0)} kcal` : "-", helper: "Current target profile", icon: HeartPulse },
+      ];
+    case "medical":
+      return [
+        { label: "Medical records", value: `${data.medicalRecords.length}`, helper: "Historical biometric entries", icon: Database },
+        { label: "Latest BMI", value: latestMedical ? round(latestMedical.bmi) : "-", helper: latestMedical ? `Recorded on ${latestMedical.displayDate}` : "No biometric history yet", icon: HeartPulse },
+        { label: "Latest BP", value: latestMedical ? `${round(latestMedical.bpHigh, 0)}/${round(latestMedical.bpLow, 0)}` : "-", helper: "Most recent blood pressure", icon: Activity },
+        { label: "Latest weight", value: latestMedical ? `${round(latestMedical.weight)} kg` : "-", helper: "Most recent weight entry", icon: UserRound },
+      ];
+    case "graphs":
+      return [
+        { label: "Nutrition days", value: `${dailyNutrition.length}`, helper: "Chart-ready food log days", icon: BarChart3 },
+        { label: "Avg daily calories", value: avgDailyCalories === null ? "-" : `${round(avgDailyCalories, 0)} kcal`, helper: "Across all tracked nutrition days", icon: Apple },
+        { label: "Avg daily proteins", value: avgDailyProteins === null ? "-" : `${round(avgDailyProteins)} g`, helper: "Across all tracked nutrition days", icon: Activity },
+        { label: "Medical points", value: `${data.medicalRecords.length}`, helper: "Biometric records available for charts", icon: HeartPulse },
+      ];
+    case "database":
+      return [
+        { label: "Food items", value: `${data.foodItems.length}`, helper: "Items in the shared food master", icon: Database },
+        { label: "Avg calories/100g", value: avgFoodCalories === null ? "-" : `${round(avgFoodCalories, 0)} kcal`, helper: "Average across master food entries", icon: Apple },
+        { label: "Avg proteins/100g", value: avgFoodProteins === null ? "-" : `${round(avgFoodProteins)} g`, helper: "Average across master food entries", icon: Activity },
+        { label: "Selected role", value: data.selectedUser.role, helper: "Profile currently being viewed", icon: ShieldCheck },
+      ];
+    case "profile":
+      return [
+        { label: "Role", value: data.selectedUser.role, helper: "Access level for this user", icon: ShieldCheck },
+        { label: "Start date", value: data.selectedUser.displayStartDate, helper: `${data.selectedUser.daysOnApp} total days on app`, icon: UserRound },
+        { label: "Target profiles", value: `${data.targetProfiles.length}`, helper: "Historical nutrition target versions", icon: BarChart3 },
+        { label: "Active target calories", value: data.selectedUser.activeTargets ? `${round(data.selectedUser.activeTargets.targetCalories, 0)} kcal` : "-", helper: "Latest active nutrition target", icon: Apple },
+      ];
+    case "admin":
+      return [
+        { label: "Total users", value: `${adminMetrics?.totalUsers ?? data.users.length}`, helper: "Users visible to admin", icon: Users },
+        { label: "Admins", value: `${adminMetrics?.totalAdmins ?? data.users.filter((user) => user.role === "ADMIN").length}`, helper: "Users with elevated access", icon: ShieldCheck },
+        { label: "Food logs", value: `${adminMetrics?.totalFoodLogs ?? data.comparisonRows.reduce((sum, row) => sum + row.totalLogs, 0)}`, helper: "All logged food entries", icon: Database },
+        { label: "High BP users", value: `${adminMetrics?.highBpCount ?? 0}`, helper: "Latest medical entries with high BP", icon: HeartPulse },
+      ];
+  }
+}
+
 function Shell({ data, tab, setTab, children }: { data: DashboardData; tab: Tab; setTab: (tab: Tab) => void; children: React.ReactNode }) {
   const tabs: { id: Tab; label: string; icon: typeof Activity; adminOnly?: boolean }[] = [
     { id: "tracker", label: "Tracker", icon: Apple },
@@ -430,6 +526,8 @@ function Shell({ data, tab, setTab, children }: { data: DashboardData; tab: Tab;
     { id: "profile", label: "Profile", icon: UserRound },
     { id: "admin", label: "Admin", icon: ShieldCheck, adminOnly: true },
   ];
+  const activeTab = tabs.find((item) => item.id === tab) ?? tabs[0];
+  const headerHighlights = getHeaderHighlights(tab, data);
 
   return (
     <main className="min-h-screen bg-[#f7faf5] text-[#172117]">
@@ -456,17 +554,30 @@ function Shell({ data, tab, setTab, children }: { data: DashboardData; tab: Tab;
         </div>
       </header>
       <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6">
-        <section className="mb-5 grid gap-4 lg:grid-cols-[1.25fr_0.75fr]">
+        <section className="mb-5 grid gap-4 xl:grid-cols-[1.05fr_1.25fr]">
           <div className="rounded-lg border border-[#dbe5d8] bg-white p-4">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#4f7f5d]">Viewing</p>
             <h1 className="mt-1 text-2xl font-semibold">{data.selectedUser.name}</h1>
-            <div className="mt-2 grid gap-2 text-sm text-[#526052] sm:grid-cols-2">
-              <p>{data.selectedUser.email}</p><p>{data.selectedUser.mobileNumber}</p><p>Role: {data.selectedUser.role}</p><p>Start date: {data.selectedUser.displayStartDate}</p>
-            </div>
+            <p className="mt-1 text-sm text-[#6a7669]">
+              {activeTab.label} overview for {data.selectedUser.email}
+            </p>
             {data.currentUser.role === "ADMIN" ? <div className="mt-4 flex flex-wrap gap-2">{data.users.map((user) => <a key={user.id} href={`/dashboard?userId=${user.id}`} className={`rounded-md border px-3 py-2 text-sm ${user.id === data.selectedUser.id ? "border-[#245b35] bg-[#edf7ec] text-[#245b35]" : "border-[#d8e2d5] hover:bg-[#f4f7f2]"}`}>{user.name}</a>)}</div> : null}
           </div>
           <div className="rounded-lg border border-[#dbe5d8] bg-white p-4">
-            {tab === "tracker" ? <><DonutChart percent={data.selectedUser.trackingRate} label={`${data.selectedUser.daysTracked} tracked / ${data.selectedUser.daysOnApp} days`} /><div className="mt-4 grid grid-cols-2 gap-3 text-sm"><div className="rounded-lg bg-[#f7faf5] p-3"><p className="text-xs uppercase tracking-wide text-[#6a7669]">Days on app</p><p className="mt-1 text-xl font-semibold">{data.selectedUser.daysOnApp}</p></div><div className="rounded-lg bg-[#f7faf5] p-3"><p className="text-xs uppercase tracking-wide text-[#6a7669]">Days tracked</p><p className="mt-1 text-xl font-semibold">{data.selectedUser.daysTracked}</p></div></div></> : <div className="grid gap-3 sm:grid-cols-2"><StatCard label="Days on app" value={`${data.selectedUser.daysOnApp}`} helper="Based on user start date" icon={UserRound} /><StatCard label="Tracking rate" value={`${Math.round(data.selectedUser.trackingRate)}%`} helper="Tracked days / days on app" icon={Activity} /></div>}
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#4f7f5d]">Page highlights</p>
+            <h2 className="mt-1 font-semibold">{activeTab.label} specific metrics</h2>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              {headerHighlights.map((highlight) => (
+                <div key={highlight.label} className="rounded-lg border border-[#e4ece1] bg-[#f9fbf8] p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-[#6a7669]">{highlight.label}</p>
+                    <highlight.icon className="size-4 text-[#4f7f5d]" />
+                  </div>
+                  <p className="mt-2 text-lg font-semibold text-[#172117]">{highlight.value}</p>
+                  <p className="mt-1 text-xs text-[#6a7669]">{highlight.helper}</p>
+                </div>
+              ))}
+            </div>
           </div>
         </section>
         {children}
@@ -474,7 +585,6 @@ function Shell({ data, tab, setTab, children }: { data: DashboardData; tab: Tab;
     </main>
   );
 }
-
 function Tracker({ data }: { data: DashboardData }) {
   const [state, action] = useActionState(saveFoodLog, initialState);
   const [selectedDate, setSelectedDate] = useState(today);
@@ -634,6 +744,39 @@ function Medical({ data }: { data: DashboardData }) {
 }
 
 function Graphs({ data }: { data: DashboardData }) {
+  const [rangePreset, setRangePreset] = useState<"7d" | "30d" | "all" | "custom">("30d");
+  const allSeriesDates = useMemo(
+    () => Array.from(new Set([...data.foodLogs.map((log) => log.date), ...data.medicalRecords.map((record) => record.date)])).sort(),
+    [data.foodLogs, data.medicalRecords],
+  );
+  const minAvailableDate = allSeriesDates.at(0) ?? today;
+  const maxAvailableDate = allSeriesDates.at(-1) ?? today;
+  const [startDate, setStartDate] = useState(clampDate(shiftDate(maxAvailableDate, -29), minAvailableDate, maxAvailableDate));
+  const [endDate, setEndDate] = useState(maxAvailableDate);
+
+  useEffect(() => {
+    if (rangePreset === "7d") {
+      setStartDate(clampDate(shiftDate(maxAvailableDate, -6), minAvailableDate, maxAvailableDate));
+      setEndDate(maxAvailableDate);
+      return;
+    }
+
+    if (rangePreset === "30d") {
+      setStartDate(clampDate(shiftDate(maxAvailableDate, -29), minAvailableDate, maxAvailableDate));
+      setEndDate(maxAvailableDate);
+      return;
+    }
+
+    if (rangePreset === "all") {
+      setStartDate(minAvailableDate);
+      setEndDate(maxAvailableDate);
+      return;
+    }
+
+    setStartDate((current) => clampDate(current, minAvailableDate, maxAvailableDate));
+    setEndDate((current) => clampDate(current, minAvailableDate, maxAvailableDate));
+  }, [maxAvailableDate, minAvailableDate, rangePreset]);
+
   const nutritionSeries = useMemo(() => {
     const map = new Map<
       string,
@@ -702,37 +845,117 @@ function Graphs({ data }: { data: DashboardData }) {
     [data.medicalRecords],
   );
 
-  const latestNutrition = nutritionSeries.at(-1) ?? null;
-  const latestMedical = biometricSeries.at(-1) ?? null;
+  const normalizedStartDate = startDate <= endDate ? startDate : endDate;
+  const normalizedEndDate = endDate >= startDate ? endDate : startDate;
+
+  const filteredNutritionSeries = useMemo(
+    () => nutritionSeries.filter((entry) => entry.date >= normalizedStartDate && entry.date <= normalizedEndDate),
+    [normalizedEndDate, normalizedStartDate, nutritionSeries],
+  );
+  const filteredBiometricSeries = useMemo(
+    () => biometricSeries.filter((entry) => entry.date >= normalizedStartDate && entry.date <= normalizedEndDate),
+    [biometricSeries, normalizedEndDate, normalizedStartDate],
+  );
+
+  const latestNutrition = filteredNutritionSeries.at(-1) ?? null;
+  const latestMedical = filteredBiometricSeries.at(-1) ?? null;
+  const avgCalories = average(filteredNutritionSeries.map((entry) => entry.calories));
+  const avgCarbs = average(filteredNutritionSeries.map((entry) => entry.carbs));
+  const avgProteins = average(filteredNutritionSeries.map((entry) => entry.proteins));
+  const avgFats = average(filteredNutritionSeries.map((entry) => entry.fats));
+  const avgRatio = average(filteredNutritionSeries.flatMap((entry) => (entry.proteinCarbRatio == null ? [] : [entry.proteinCarbRatio])));
+  const avgBmi = average(filteredBiometricSeries.map((entry) => entry.bmi));
+  const avgWeight = average(filteredBiometricSeries.map((entry) => entry.weight));
+  const avgBpHigh = average(filteredBiometricSeries.map((entry) => entry.bpHigh));
+  const avgBpLow = average(filteredBiometricSeries.map((entry) => entry.bpLow));
+
+  const rangeButtons: { id: "7d" | "30d" | "all"; label: string }[] = [
+    { id: "7d", label: "Last 7 days" },
+    { id: "30d", label: "Last 30 days" },
+    { id: "all", label: "All time" },
+  ];
 
   return (
     <div className="space-y-5">
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard
-          label="Days tracked"
-          value={`${data.selectedUser.daysTracked}`}
-          helper="Distinct food-log days"
-          icon={Activity}
-        />
-        <StatCard
-          label="Tracking rate"
-          value={`${Math.round(data.selectedUser.trackingRate)}%`}
-          helper="Food tracked over total days on app"
-          icon={BarChart3}
-        />
-        <StatCard
-          label="Active target calories"
-          value={data.selectedUser.activeTargets ? round(data.selectedUser.activeTargets.targetCalories, 0) : "-"}
-          helper="Latest target profile"
-          icon={Apple}
-        />
-        <StatCard
-          label="Latest BMI"
-          value={latestMedical ? round(latestMedical.bmi) : "-"}
-          helper={latestMedical ? `Recorded on ${latestMedical.label}` : "No biometric records yet"}
-          icon={HeartPulse}
-        />
-      </div>
+      <section className="rounded-lg border border-[#dbe5d8] bg-white p-4">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+          <div>
+            <h2 className="font-semibold">Graph range and filters</h2>
+            <p className="mt-1 text-sm text-[#6a7669]">
+              Select a preset or a custom date range to refresh both nutrition and biometric charts.
+            </p>
+            <p className="mt-2 text-xs text-[#6a7669]">
+              Showing data for {formatRangeLabel(normalizedStartDate, normalizedEndDate)}
+            </p>
+          </div>
+          <div className="flex flex-col gap-3 xl:items-end">
+            <div className="flex flex-wrap gap-2">
+              {rangeButtons.map((button) => (
+                <button
+                  key={button.id}
+                  type="button"
+                  onClick={() => setRangePreset(button.id)}
+                  className={`rounded-md border px-3 py-2 text-sm ${rangePreset === button.id ? "border-[#245b35] bg-[#edf7ec] text-[#245b35]" : "border-[#d8e2d5] hover:bg-[#f4f7f2]"}`}
+                >
+                  {button.label}
+                </button>
+              ))}
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="block">
+                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[#6a7669]">Start date</span>
+                <input
+                  type="date"
+                  min={minAvailableDate}
+                  max={maxAvailableDate}
+                  value={normalizedStartDate}
+                  onChange={(event) => {
+                    setRangePreset("custom");
+                    setStartDate(clampDate(event.target.value, minAvailableDate, maxAvailableDate));
+                  }}
+                  className="h-10 w-full rounded-md border border-[#d8e2d5] bg-white px-3 text-sm outline-none focus:border-[#245b35]"
+                />
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[#6a7669]">End date</span>
+                <input
+                  type="date"
+                  min={minAvailableDate}
+                  max={maxAvailableDate}
+                  value={normalizedEndDate}
+                  onChange={(event) => {
+                    setRangePreset("custom");
+                    setEndDate(clampDate(event.target.value, minAvailableDate, maxAvailableDate));
+                  }}
+                  className="h-10 w-full rounded-md border border-[#d8e2d5] bg-white px-3 text-sm outline-none focus:border-[#245b35]"
+                />
+              </label>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="rounded-lg border border-[#dbe5d8] bg-white p-4">
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h2 className="font-semibold">Average insights for the selected range</h2>
+            <p className="text-sm text-[#6a7669]">These tiles update whenever the date range changes.</p>
+          </div>
+          <p className="text-xs text-[#6a7669]">
+            Nutrition days: {filteredNutritionSeries.length} | Medical points: {filteredBiometricSeries.length}
+          </p>
+        </div>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <MiniMetric label="Avg calories/day" value={avgCalories === null ? "-" : `${round(avgCalories, 0)} kcal`} helper="Average calories across visible nutrition days" />
+          <MiniMetric label="Avg carbs/day" value={avgCarbs === null ? "-" : `${round(avgCarbs)} g`} helper="Average carbs across visible nutrition days" />
+          <MiniMetric label="Avg proteins/day" value={avgProteins === null ? "-" : `${round(avgProteins)} g`} helper="Average proteins across visible nutrition days" />
+          <MiniMetric label="Avg fats/day" value={avgFats === null ? "-" : `${round(avgFats)} g`} helper="Average fats across visible nutrition days" />
+          <MiniMetric label="Avg protein/carb ratio" value={avgRatio === null ? "-" : round(avgRatio)} helper="Average of daily ratio values in range" />
+          <MiniMetric label="Avg BMI" value={avgBmi === null ? "-" : round(avgBmi)} helper="Average BMI across visible medical entries" />
+          <MiniMetric label="Avg weight" value={avgWeight === null ? "-" : `${round(avgWeight)} kg`} helper="Average weight across visible medical entries" />
+          <MiniMetric label="Avg BP" value={avgBpHigh === null || avgBpLow === null ? "-" : `${round(avgBpHigh, 0)}/${round(avgBpLow, 0)}`} helper="Average blood pressure across visible medical entries" />
+        </div>
+      </section>
 
       <div className="grid gap-5 xl:grid-cols-2">
         <section className="rounded-lg border border-[#dbe5d8] bg-white p-4">
@@ -745,40 +968,25 @@ function Graphs({ data }: { data: DashboardData }) {
             </div>
             {latestNutrition ? (
               <p className="text-xs text-[#6a7669]">
-                Latest: {latestNutrition.label} - {round(latestNutrition.calories, 0)} kcal
+                Latest in range: {latestNutrition.label} - {round(latestNutrition.calories, 0)} kcal
               </p>
             ) : null}
           </div>
 
-          {nutritionSeries.length === 0 ? (
+          {filteredNutritionSeries.length === 0 ? (
             <div className="mt-6 rounded-lg border border-dashed border-[#d8e2d5] bg-[#f9fbf8] p-6 text-sm text-[#6a7669]">
-              Add food logs to see nutrient and calorie trends here.
+              No nutrition data falls within the selected range.
             </div>
           ) : (
             <>
               <div className="mt-5 h-[320px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={nutritionSeries} margin={{ top: 8, right: 12, left: 0, bottom: 8 }}>
+                  <LineChart data={filteredNutritionSeries} margin={{ top: 8, right: 12, left: 0, bottom: 8 }}>
                     <CartesianGrid stroke="#e7eee4" strokeDasharray="4 4" />
                     <XAxis dataKey="label" tick={{ fontSize: 12, fill: "#6a7669" }} minTickGap={24} />
-                    <YAxis
-                      yAxisId="grams"
-                      tick={{ fontSize: 12, fill: "#6a7669" }}
-                      tickFormatter={(value: number) => `${value}g`}
-                      width={52}
-                    />
-                    <YAxis
-                      yAxisId="calories"
-                      orientation="right"
-                      tick={{ fontSize: 12, fill: "#6a7669" }}
-                      tickFormatter={(value: number) => `${value}`}
-                      width={44}
-                    />
-                    <Tooltip
-                      contentStyle={{ borderRadius: 12, borderColor: "#d8e2d5" }}
-                      formatter={nutritionTooltipFormatter}
-                      labelFormatter={(label) => `Date: ${label}`}
-                    />
+                    <YAxis yAxisId="grams" tick={{ fontSize: 12, fill: "#6a7669" }} tickFormatter={(value: number) => `${value}g`} width={52} />
+                    <YAxis yAxisId="calories" orientation="right" tick={{ fontSize: 12, fill: "#6a7669" }} tickFormatter={(value: number) => `${value}`} width={44} />
+                    <Tooltip contentStyle={{ borderRadius: 12, borderColor: "#d8e2d5" }} formatter={nutritionTooltipFormatter} labelFormatter={(label) => `Date: ${label}`} />
                     <Legend />
                     <Line yAxisId="grams" type="monotone" dataKey="carbs" name="Carbs" stroke="#4f7f5d" strokeWidth={2.5} dot={{ r: 2 }} activeDot={{ r: 5 }} />
                     <Line yAxisId="grams" type="monotone" dataKey="proteins" name="Proteins" stroke="#245b35" strokeWidth={2.5} dot={{ r: 2 }} activeDot={{ r: 5 }} />
@@ -789,21 +997,9 @@ function Graphs({ data }: { data: DashboardData }) {
                 </ResponsiveContainer>
               </div>
               <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                <MiniMetric
-                  label="Latest protein/carb ratio"
-                  value={latestNutrition?.proteinCarbRatio != null ? round(latestNutrition.proteinCarbRatio) : "-"}
-                  helper="Average across that day's logged entries"
-                />
-                <MiniMetric
-                  label="Latest proteins"
-                  value={latestNutrition ? `${round(latestNutrition.proteins)} g` : "-"}
-                  helper="Total proteins on latest tracked day"
-                />
-                <MiniMetric
-                  label="Latest carbs"
-                  value={latestNutrition ? `${round(latestNutrition.carbs)} g` : "-"}
-                  helper="Total carbs on latest tracked day"
-                />
+                <MiniMetric label="Latest protein/carb ratio" value={latestNutrition?.proteinCarbRatio != null ? round(latestNutrition.proteinCarbRatio) : "-"} helper="Average across the latest visible day" />
+                <MiniMetric label="Latest proteins" value={latestNutrition ? `${round(latestNutrition.proteins)} g` : "-"} helper="Total proteins on latest visible nutrition day" />
+                <MiniMetric label="Latest carbs" value={latestNutrition ? `${round(latestNutrition.carbs)} g` : "-"} helper="Total carbs on latest visible nutrition day" />
               </div>
             </>
           )}
@@ -819,38 +1015,25 @@ function Graphs({ data }: { data: DashboardData }) {
             </div>
             {latestMedical ? (
               <p className="text-xs text-[#6a7669]">
-                Latest: {latestMedical.label} - BMI {round(latestMedical.bmi)}
+                Latest in range: {latestMedical.label} - BMI {round(latestMedical.bmi)}
               </p>
             ) : null}
           </div>
 
-          {biometricSeries.length === 0 ? (
+          {filteredBiometricSeries.length === 0 ? (
             <div className="mt-6 rounded-lg border border-dashed border-[#d8e2d5] bg-[#f9fbf8] p-6 text-sm text-[#6a7669]">
-              Add medical records to see biometric trends here.
+              No biometric data falls within the selected range.
             </div>
           ) : (
             <>
               <div className="mt-5 h-[320px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={biometricSeries} margin={{ top: 8, right: 12, left: 0, bottom: 8 }}>
+                  <LineChart data={filteredBiometricSeries} margin={{ top: 8, right: 12, left: 0, bottom: 8 }}>
                     <CartesianGrid stroke="#e7eee4" strokeDasharray="4 4" />
                     <XAxis dataKey="label" tick={{ fontSize: 12, fill: "#6a7669" }} minTickGap={24} />
-                    <YAxis
-                      yAxisId="body"
-                      tick={{ fontSize: 12, fill: "#6a7669" }}
-                      width={44}
-                    />
-                    <YAxis
-                      yAxisId="bp"
-                      orientation="right"
-                      tick={{ fontSize: 12, fill: "#6a7669" }}
-                      width={44}
-                    />
-                    <Tooltip
-                      contentStyle={{ borderRadius: 12, borderColor: "#d8e2d5" }}
-                      formatter={biometricTooltipFormatter}
-                      labelFormatter={(label) => `Date: ${label}`}
-                    />
+                    <YAxis yAxisId="body" tick={{ fontSize: 12, fill: "#6a7669" }} width={44} />
+                    <YAxis yAxisId="bp" orientation="right" tick={{ fontSize: 12, fill: "#6a7669" }} width={44} />
+                    <Tooltip contentStyle={{ borderRadius: 12, borderColor: "#d8e2d5" }} formatter={biometricTooltipFormatter} labelFormatter={(label) => `Date: ${label}`} />
                     <Legend />
                     <Line yAxisId="body" type="monotone" dataKey="bmi" name="BMI" stroke="#245b35" strokeWidth={3} dot={{ r: 2 }} activeDot={{ r: 5 }} />
                     <Line yAxisId="body" type="monotone" dataKey="weight" name="Weight" stroke="#4f7f5d" strokeWidth={2.5} dot={{ r: 2 }} activeDot={{ r: 5 }} />
@@ -860,21 +1043,9 @@ function Graphs({ data }: { data: DashboardData }) {
                 </ResponsiveContainer>
               </div>
               <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                <MiniMetric
-                  label="Latest BP"
-                  value={latestMedical ? `${round(latestMedical.bpHigh, 0)}/${round(latestMedical.bpLow, 0)}` : "-"}
-                  helper="Most recent medical entry"
-                />
-                <MiniMetric
-                  label="Latest weight"
-                  value={latestMedical ? `${round(latestMedical.weight)} kg` : "-"}
-                  helper="Most recent medical entry"
-                />
-                <MiniMetric
-                  label="Total records"
-                  value={`${biometricSeries.length}`}
-                  helper="Medical history points available"
-                />
+                <MiniMetric label="Latest BP" value={latestMedical ? `${round(latestMedical.bpHigh, 0)}/${round(latestMedical.bpLow, 0)}` : "-"} helper="Most recent medical entry inside the selected range" />
+                <MiniMetric label="Latest weight" value={latestMedical ? `${round(latestMedical.weight)} kg` : "-"} helper="Most recent medical entry inside the selected range" />
+                <MiniMetric label="Total visible records" value={`${filteredBiometricSeries.length}`} helper="Medical history points inside the selected range" />
               </div>
             </>
           )}
@@ -883,7 +1054,6 @@ function Graphs({ data }: { data: DashboardData }) {
     </div>
   );
 }
-
 function DatabaseTab({ data }: { data: DashboardData }) {
   const [state, action] = useActionState(saveFoodItem, initialState);
   const canEdit = data.currentUser.role === "ADMIN";

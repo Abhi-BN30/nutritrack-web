@@ -658,7 +658,7 @@ function Shell({ data, tab, setTab, children }: { data: DashboardData; tab: Tab;
             {/* <p className="mt-1 break-all text-sm text-[#6a7669]">
               {activeTab.label} overview for {data.selectedUser.email}
             </p> */}
-            {data.currentUser.role === "ADMIN" ? <div className="mt-4 flex flex-wrap gap-2">{data.users.map((user) => <a key={user.id} href={`/dashboard?userId=${user.id}`} className={`rounded-md border px-3 py-2 text-sm ${user.id === data.selectedUser.id ? "border-[#245b35] bg-[#edf7ec] text-[#245b35]" : "border-[#d8e2d5] hover:bg-[#f4f7f2]"}`}>{user.name}</a>)}</div> : null}
+            {/* {data.currentUser.role === "ADMIN" ? <div className="mt-4 flex flex-wrap gap-2">{data.users.map((user) => <a key={user.id} href={`/dashboard?userId=${user.id}`} className={`rounded-md border px-3 py-2 text-sm ${user.id === data.selectedUser.id ? "border-[#245b35] bg-[#edf7ec] text-[#245b35]" : "border-[#d8e2d5] hover:bg-[#f4f7f2]"}`}>{user.name}</a>)}</div> : null} */}
           </div>
           <div className="min-w-0 rounded-lg border border-[#dbe5d8] bg-white p-4">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#4f7f5d]">Page highlights</p>

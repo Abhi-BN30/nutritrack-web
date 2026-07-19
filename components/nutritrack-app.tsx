@@ -667,8 +667,8 @@ function getHeaderHighlights(tab: Tab, data: DashboardData): HeaderHighlight[] {
       ];
     case "profile":
       return [
-        // { label: "Role", value: data.selectedUser.role, helper: "Access level for this user", icon: ShieldCheck },
-        // { label: "Start date", value: data.selectedUser.displayStartDate, helper: `${data.selectedUser.daysOnApp} total days on app`, icon: UserRound },
+        { label: "Role", value: data.selectedUser.role, helper: "", icon: ShieldCheck },
+        { label: "Start date", value: data.selectedUser.displayStartDate, helper: `${data.selectedUser.daysOnApp} total days on app`, icon: UserRound },
         // { label: "Target profiles", value: `${data.targetProfiles.length}`, helper: "Historical nutrition target versions", icon: BarChart3 },
         // { label: "Active target calories", value: data.selectedUser.activeTargets ? `${round(data.selectedUser.activeTargets.targetCalories, 0)} kcal` : "-", helper: "Latest active nutrition target", icon: Apple },
       ];
@@ -730,7 +730,7 @@ function Shell({ data, tab, setTab, children }: { data: DashboardData; tab: Tab;
           </div>
           <div className="min-w-0 rounded-lg border border-[#dbe5d8] bg-white p-4">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#4f7f5d]">Page highlights</p>
-            <h2 className="mt-1 font-semibold">{activeTab.label} specific metrics</h2>
+            <h2 className="mt-1 font-semibold">{activeTab.label} metrics</h2>
             {tab === "tracker" ? (
               <div className="mt-4 space-y-3">
                 <div className="rounded-lg border border-[#e4ece1] bg-[#f9fbf8] px-3 py-3 sm:px-4">
@@ -825,7 +825,7 @@ function Tracker({ data }: { data: DashboardData }) {
       <div className="grid gap-5 2xl:grid-cols-[0.95fr_1.05fr]">
         <section className="min-w-0 space-y-4">
           <div className="rounded-lg border border-[#dbe5d8] bg-white p-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h2 className="font-semibold">Daily tracker</h2>
                 {/* <p className="text-sm text-[#6a7669]">Targets are resolved using the target values effective on the selected date.</p> */}
@@ -859,8 +859,9 @@ function Tracker({ data }: { data: DashboardData }) {
                   {data.foodItems.map((item) => <option key={item.id} value={item.id}>{item.itemName}</option>)}
                 </select>
               </label>
-              <Field name="date" label="Date" type="date" defaultValue={editingLog?.date ?? selectedDate} required />
-              <Field name="dishName" label="Dish / meal" defaultValue={editingLog?.dishName ?? "Meal"} required />
+              
+              <Field name="dishName" label="Dish / Meal" placeholder="Free Input Field" required />
+              <Field name="quantityValue" label={quantityLabel} type="number" step={quantityStep} defaultValue={editingLog?.quantityGms ?? ""} required />
               <label>
                 <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[#6a7669]">Metric</span>
                 <select name="quantityMetric" value={quantityMetric} onChange={(e) => setQuantityMetric(e.target.value as "GRAMS" | "ML" | "INTEGER")} className="h-10 w-full rounded-md border border-[#d8e2d5] bg-white px-3 text-sm">
@@ -869,7 +870,7 @@ function Tracker({ data }: { data: DashboardData }) {
                   <option value="INTEGER">Integer</option>
                 </select>
               </label>
-              <Field name="quantityValue" label={quantityLabel} type="number" step={quantityStep} defaultValue={editingLog?.quantityGms ?? ""} required />
+              <Field name="date" label="Date" type="date" defaultValue={editingLog?.date ?? selectedDate} required />
             </div>
             <div className="mt-4"><ActionMessage state={state} /></div>
             <button className="mt-4 h-10 rounded-md bg-[#245b35] px-4 text-sm font-semibold text-white">{editingLog ? "Update log" : "Save log"}</button>
@@ -880,7 +881,7 @@ function Tracker({ data }: { data: DashboardData }) {
           <div className="border-b border-[#e4ece1] p-4">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div>
-                <h2 className="font-semibold">Meals and ingredients</h2>
+                <h2 className="font-semibold">Meals and Ingredients</h2>
                 {/* <p className="text-sm text-[#6a7669]">Use show-all to view the full history. By default the table shows only the selected day.</p> */}
               </div>
               <div className="flex flex-wrap gap-2">
@@ -969,11 +970,11 @@ function Medical({ data }: { data: DashboardData }) {
         <h2 className="font-semibold">Add medical data</h2>
         {/* <p className="mt-1 text-sm text-[#6a7669]">Each update creates a new dated medical record.</p> */}
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <Field name="date" label="Date" type="date" defaultValue={today} required />
           <Field name="weight" label="Weight kg" type="number" step="0.1" required />
           <Field name="height" label="Height cm" type="number" step="0.1" required />
-          <Field name="bpLow" label="BP low" type="number" step="1" required />
-          <Field name="bpHigh" label="BP high" type="number" step="1" required />
+          <Field name="bpHigh" label="Systolic BP" type="number" step="1" required />
+          <Field name="bpLow" label="Diastolic BP" type="number" step="1" required />
+          <Field name="date" label="Date" type="date" defaultValue={today} required />
         </div>
         <div className="mt-4"><ActionMessage state={state} /></div>
         <button className="mt-4 h-10 rounded-md bg-[#245b35] px-4 text-sm font-semibold text-white">Save medical record</button>
@@ -1132,7 +1133,7 @@ function Graphs({ data }: { data: DashboardData }) {
   return (
     <div className="space-y-5">
       <section className="rounded-lg border border-[#dbe5d8] bg-white p-4">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div>
             <h2 className="font-semibold">Graph range and filters</h2>
             {/* <p className="mt-1 text-sm text-[#6a7669]">

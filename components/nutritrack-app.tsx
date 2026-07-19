@@ -1134,60 +1134,84 @@ function Graphs({ data }: { data: DashboardData }) {
     <div className="space-y-5">
       <section className="rounded-lg border border-[#dbe5d8] bg-white p-4">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-          <div>
-            <h2 className="font-semibold">Graph range and filters</h2>
-            {/* <p className="mt-1 text-sm text-[#6a7669]">
-              Select a preset or a custom date range to refresh both nutrition and biometric charts.
-            </p> */}
-            {/* <p className="mt-2 text-xs text-[#6a7669]">
-              Showing data for {formatRangeLabel(normalizedStartDate, normalizedEndDate)}
-            </p> */}
-          </div>
-          <div className="flex flex-col gap-3 xl:items-end">
-            <div className="flex flex-wrap gap-2">
-              {rangeButtons.map((button) => (
-                <button
-                  key={button.id}
-                  type="button"
-                  onClick={() => setRangePreset(button.id)}
-                  className={`rounded-md border px-3 py-2 text-sm ${rangePreset === button.id ? "border-[#245b35] bg-[#edf7ec] text-[#245b35]" : "border-[#d8e2d5] hover:bg-[#f4f7f2]"}`}
-                >
-                  {button.label}
-                </button>
-              ))}
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label className="block">
-                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[#6a7669]">Start date</span>
-                <input
-                  type="date"
-                  min={minAvailableDate}
-                  max={maxAvailableDate}
-                  value={normalizedStartDate}
-                  onChange={(event) => {
-                    setRangePreset("custom");
-                    setCustomStartDate(clampDate(event.target.value, minAvailableDate, maxAvailableDate));
-                  }}
-                  className="h-10 w-full rounded-md border border-[#d8e2d5] bg-white px-3 text-sm outline-none focus:border-[#245b35]"
-                />
-              </label>
-              <label className="block">
-                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[#6a7669]">End date</span>
-                <input
-                  type="date"
-                  min={minAvailableDate}
-                  max={maxAvailableDate}
-                  value={normalizedEndDate}
-                  onChange={(event) => {
-                    setRangePreset("custom");
-                    setCustomEndDate(clampDate(event.target.value, minAvailableDate, maxAvailableDate));
-                  }}
-                  className="h-10 w-full rounded-md border border-[#d8e2d5] bg-white px-3 text-sm outline-none focus:border-[#245b35]"
-                />
-              </label>
-            </div>
-          </div>
-        </div>
+  <div>
+    <h2 className="font-semibold">Graph range and filters</h2>
+    {/* <p className="mt-1 text-sm text-[#6a7669]">
+      Select a preset or a custom date range to refresh both nutrition and biometric charts.
+    </p>
+    <p className="mt-2 text-xs text-[#6a7669]">
+      Showing data for {formatRangeLabel(normalizedStartDate, normalizedEndDate)}
+    </p> */}
+  </div>
+
+  <div className="flex flex-wrap items-end justify-end gap-4">
+    {/* Preset Buttons */}
+    <div className="flex flex-wrap gap-2">
+      {rangeButtons.map((button) => (
+        <button
+          key={button.id}
+          type="button"
+          onClick={() => setRangePreset(button.id)}
+          className={`rounded-md border px-3 py-2 text-sm transition-colors ${
+            rangePreset === button.id
+              ? "border-[#245b35] bg-[#edf7ec] text-[#245b35]"
+              : "border-[#d8e2d5] hover:bg-[#f4f7f2]"
+          }`}
+        >
+          {button.label}
+        </button>
+      ))}
+    </div>
+
+    {/* Start Date */}
+    <label className="flex flex-col">
+      <span className="mb-1 text-xs font-semibold uppercase tracking-wide text-[#6a7669]">
+        Start date
+      </span>
+      <input
+        type="date"
+        min={minAvailableDate}
+        max={maxAvailableDate}
+        value={normalizedStartDate}
+        onChange={(event) => {
+          setRangePreset("custom");
+          setCustomStartDate(
+            clampDate(
+              event.target.value,
+              minAvailableDate,
+              maxAvailableDate
+            )
+          );
+        }}
+        className="h-10 w-48 rounded-md border border-[#d8e2d5] bg-white px-3 text-sm outline-none focus:border-[#245b35]"
+      />
+    </label>
+
+    {/* End Date */}
+    <label className="flex flex-col">
+      <span className="mb-1 text-xs font-semibold uppercase tracking-wide text-[#6a7669]">
+        End date
+      </span>
+      <input
+        type="date"
+        min={minAvailableDate}
+        max={maxAvailableDate}
+        value={normalizedEndDate}
+        onChange={(event) => {
+          setRangePreset("custom");
+          setCustomEndDate(
+            clampDate(
+              event.target.value,
+              minAvailableDate,
+              maxAvailableDate
+            )
+          );
+        }}
+        className="h-10 w-48 rounded-md border border-[#d8e2d5] bg-white px-3 text-sm outline-none focus:border-[#245b35]"
+      />
+    </label>
+  </div>
+</div>
       </section>
 
 

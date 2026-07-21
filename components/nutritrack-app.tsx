@@ -85,6 +85,8 @@ type FoodLog = {
   date: string;
   displayDate: string;
   dishName: string;
+  quantityValue: number;
+  quantityMetric: "GRAMS" | "ML" | "INTEGER";
   quantityGms: number;
   carbs: number;
   proteins: number;
@@ -267,6 +269,20 @@ function resolveTargetForDate(targets: TargetProfile[], date: string): Targets |
         targetCalories: active.targetCalories,
       }
     : null;
+}
+
+function formatQuantityDisplay(value: number, metric: "GRAMS" | "ML" | "INTEGER") {
+  const roundedValue = round(value, metric === "INTEGER" ? 0 : 1);
+
+  if (metric === "ML") {
+    return `${roundedValue} ml`;
+  }
+
+  if (metric === "INTEGER") {
+    return `${roundedValue} no's.`;
+  }
+
+  return `${roundedValue} g`;
 }
 
 function DonutChart({ percent, label }: { percent: number; label: string }) {
@@ -490,7 +506,6 @@ function TargetCards({ totals, targets }: { totals: Targets; targets: Targets | 
           const radius = 22;
           const circumference = 2 * Math.PI * radius;
           const offset = circumference - (displayProgress / 100) * circumference;
-          const toneClass = progress > 100 ? "text-[#b14646]" : "text-[#245b35]";
           const strokeColor = progress > 100 ? "#b14646" : "#245b35";
 
           return (
@@ -516,7 +531,7 @@ function TargetCards({ totals, targets }: { totals: Targets; targets: Targets | 
                     transform="rotate(-90 34 34)"
                   />
                   <text x="34" y="32" textAnchor="middle" className="fill-[#172117] text-[12px] font-semibold">
-                    {Math.round(displayProgress)}%
+                    {Math.round(progress)}%
                   </text>
                   <text x="34" y="43" textAnchor="middle" className="fill-[#6a7669] text-[8px] font-medium">
                     of goal
@@ -532,9 +547,6 @@ function TargetCards({ totals, targets }: { totals: Targets; targets: Targets | 
                 <p className="mt-1 text-[11px] text-[#6a7669] leading-tight">
                   Target {targetValue ? `${round(targetValue, item.unit === "kcal" ? 0 : 1)}${item.unit}` : "not set"}
                 </p>
-                <p className={`mt-1 text-xs font-semibold ${toneClass}`}>
-                  {targetValue ? `${round(progress, 0)}% reached` : "Set target"}
-                </p>
               </div>
             </div>
           );
@@ -549,7 +561,6 @@ function TargetCards({ totals, targets }: { totals: Targets; targets: Targets | 
           const radius = 28;
           const circumference = 2 * Math.PI * radius;
           const offset = circumference - (displayProgress / 100) * circumference;
-          const toneClass = progress > 100 ? "text-[#b14646]" : "text-[#245b35]";
           const strokeColor = progress > 100 ? "#b14646" : "#245b35";
 
           return (
@@ -575,7 +586,7 @@ function TargetCards({ totals, targets }: { totals: Targets; targets: Targets | 
                     transform="rotate(-90 42 42)"
                   />
                   <text x="42" y="40" textAnchor="middle" className="fill-[#172117] text-[15px] font-semibold">
-                    {Math.round(displayProgress)}%
+                    {Math.round(progress)}%
                   </text>
                   <text x="42" y="54" textAnchor="middle" className="fill-[#6a7669] text-[10px] font-medium">
                     of goal
@@ -589,9 +600,6 @@ function TargetCards({ totals, targets }: { totals: Targets; targets: Targets | 
                   </p>
                   <p className="mt-1 text-xs text-[#6a7669]">
                     Target {targetValue ? `${round(targetValue, item.unit === "kcal" ? 0 : 1)}${item.unit}` : "not set"}
-                  </p>
-                  <p className={`mt-2 text-sm font-semibold ${toneClass}`}>
-                    {targetValue ? `${round(progress, 0)}% reached` : "Set a target to track progress"}
                   </p>
                 </div>
               </div>
@@ -817,7 +825,6 @@ function Tracker({ data }: { data: DashboardData }) {
 
   const targetForSelectedDate = resolveTargetForDate(data.targetProfiles, selectedDate);
 
-  const quantityLabel = quantityMetric === "GRAMS" ? "Quantity grams" : quantityMetric === "ML" ? "Quantity ml" : "Quantity count";
   const quantityStep = quantityMetric === "INTEGER" ? "1" : "0.1";
 
   return (
@@ -861,8 +868,8 @@ function Tracker({ data }: { data: DashboardData }) {
               </label>
               
               <Field name="dishName" label="Dish / Meal / Description" placeholder="Free Input Field" required />
-              {/* <Field name="quantityValue" label={quantityLabel} type="number" step={quantityStep} defaultValue={editingLog?.quantityGms ?? ""} required /> */}
-              <Field name="quantityValue" label="Quantity" type="number" step={quantityStep} defaultValue={editingLog?.quantityGms ?? ""} required />
+              {/* <Field name="quantityValue" label={quantityLabel} type="number" step={quantityStep} defaultValue={editingLog?.quantityValue ?? ""} required /> */}
+              <Field name="quantityValue" label="Quantity" type="number" step={quantityStep} defaultValue={editingLog?.quantityValue ?? ""} required />
               <label>
                 <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[#6a7669]">Metric</span>
                 <select name="quantityMetric" value={quantityMetric} onChange={(e) => setQuantityMetric(e.target.value as "GRAMS" | "ML" | "INTEGER")} className="h-10 w-full rounded-md border border-[#d8e2d5] bg-white px-3 text-sm">
@@ -922,7 +929,7 @@ function Tracker({ data }: { data: DashboardData }) {
                     <p className="text-sm text-[#6a7669]">{log.displayDate}</p>
                   </div>
                   <div className="flex gap-2">
-                    <button type="button" onClick={() => { setEditingLog(log); setSelectedDate(log.date); setQuantityMetric("GRAMS"); }} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]"><Pencil className="size-4" /></button>
+                    <button type="button" onClick={() => { setEditingLog(log); setSelectedDate(log.date); setQuantityMetric(log.quantityMetric); }} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]"><Pencil className="size-4" /></button>
                     <form action={deleteFoodLog}><input type="hidden" name="id" value={log.id} /><button className="rounded-md border border-[#ead0cb] p-2 text-[#a13f32] hover:bg-[#fff4f2]"><Trash2 className="size-4" /></button></form>
                   </div>
                 </div>
@@ -942,14 +949,14 @@ function Tracker({ data }: { data: DashboardData }) {
             <table className="w-full min-w-[920px] text-sm">
               <thead className="bg-[#f4f8f2] text-left">
                 <tr>
-                  <th className="p-3">Date</th><th className="p-3">Dish</th><th className="p-3">Food item</th><th className="p-3">Qty (g equiv.)</th><th className="p-3">Carbs</th><th className="p-3">Proteins</th><th className="p-3">Fats</th><th className="p-3">Calories</th><th className="p-3">Protein/Carb ratio</th><th className="p-3">Actions</th>
+                  <th className="p-3">Date</th><th className="p-3">Dish</th><th className="p-3">Food item</th><th className="p-3">Qty</th><th className="p-3">Carbs</th><th className="p-3">Proteins</th><th className="p-3">Fats</th><th className="p-3">Calories</th><th className="p-3">Protein/Carb ratio</th><th className="p-3">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {visibleLogs.length === 0 ? <tr><td colSpan={10} className="p-5 text-center text-sm text-[#6a7669]">No food logs found.</td></tr> : visibleLogs.map((log) => (
                   <tr key={log.id} className="border-t border-[#eef3ec]">
-                    <td className="p-3">{log.displayDate}</td><td className="p-3 font-medium">{log.dishName}</td><td className="p-3">{log.foodItem}</td><td className="p-3">{round(log.quantityGms, 0)}</td><td className="p-3">{round(log.carbs)}g</td><td className="p-3">{round(log.proteins)}g</td><td className="p-3">{round(log.fats)}g</td><td className="p-3">{round(log.calories, 0)}</td><td className="p-3">{log.proteinCarbRatio === null ? "-" : round(log.proteinCarbRatio)}</td>
-                    <td className="p-3"><div className="flex gap-2"><button type="button" onClick={() => { setEditingLog(log); setSelectedDate(log.date); setQuantityMetric("GRAMS"); }} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]"><Pencil className="size-4" /></button><form action={deleteFoodLog}><input type="hidden" name="id" value={log.id} /><button className="rounded-md border border-[#ead0cb] p-2 text-[#a13f32] hover:bg-[#fff4f2]"><Trash2 className="size-4" /></button></form></div></td>
+                    <td className="p-3">{log.displayDate}</td><td className="p-3 font-medium">{log.dishName}</td><td className="p-3">{log.foodItem}</td><td className="p-3">{formatQuantityDisplay(log.quantityValue, log.quantityMetric)}</td><td className="p-3">{round(log.carbs)}g</td><td className="p-3">{round(log.proteins)}g</td><td className="p-3">{round(log.fats)}g</td><td className="p-3">{round(log.calories, 0)}</td><td className="p-3">{log.proteinCarbRatio === null ? "-" : round(log.proteinCarbRatio)}</td>
+                    <td className="p-3"><div className="flex gap-2"><button type="button" onClick={() => { setEditingLog(log); setSelectedDate(log.date); setQuantityMetric(log.quantityMetric); }} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]"><Pencil className="size-4" /></button><form action={deleteFoodLog}><input type="hidden" name="id" value={log.id} /><button className="rounded-md border border-[#ead0cb] p-2 text-[#a13f32] hover:bg-[#fff4f2]"><Trash2 className="size-4" /></button></form></div></td>
                   </tr>
                 ))}
               </tbody>
@@ -963,22 +970,27 @@ function Tracker({ data }: { data: DashboardData }) {
 
 function Medical({ data }: { data: DashboardData }) {
   const [state, action] = useActionState(saveMedicalRecord, initialState);
+  const [editingRecord, setEditingRecord] = useState<MedicalRecord | null>(null);
 
   return (
     <div className="grid gap-5 xl:grid-cols-[0.82fr_1.18fr]">
-      <form action={action} className="rounded-lg border border-[#dbe5d8] bg-white p-4">
+      <form key={editingRecord?.id ?? "new-medical-record"} action={action} className="rounded-lg border border-[#dbe5d8] bg-white p-4">
+        <input name="id" type="hidden" value={editingRecord?.id ?? ""} />
         <input name="userId" type="hidden" value={data.selectedUser.id} />
-        <h2 className="font-semibold">Add medical data</h2>
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="font-semibold">{editingRecord ? "Edit biometric data" : "Add medical data"}</h2>
+          {editingRecord ? <button type="button" onClick={() => setEditingRecord(null)} className="rounded-md border border-[#d8e2d5] px-3 py-2 text-sm font-medium hover:bg-[#f4f7f2]">Cancel edit</button> : null}
+        </div>
         {/* <p className="mt-1 text-sm text-[#6a7669]">Each update creates a new dated medical record.</p> */}
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <Field name="weight" label="Weight kg" type="number" step="0.1" required />
-          <Field name="height" label="Height cm" type="number" step="0.1" required />
-          <Field name="bpHigh" label="Systolic BP" type="number" step="1" required />
-          <Field name="bpLow" label="Diastolic BP" type="number" step="1" required />
-          <Field name="date" label="Date" type="date" defaultValue={today} required />
+          <Field name="weight" label="Weight kg" type="number" step="0.1" defaultValue={editingRecord?.weight ?? ""} required />
+          <Field name="height" label="Height cm" type="number" step="0.1" defaultValue={editingRecord?.height ?? ""} required />
+          <Field name="bpHigh" label="Systolic BP" type="number" step="1" defaultValue={editingRecord?.bpHigh ?? ""} required />
+          <Field name="bpLow" label="Diastolic BP" type="number" step="1" defaultValue={editingRecord?.bpLow ?? ""} required />
+          <Field name="date" label="Date" type="date" defaultValue={editingRecord?.date ?? today} required />
         </div>
         <div className="mt-4"><ActionMessage state={state} /></div>
-        <button className="mt-4 h-10 rounded-md bg-[#245b35] px-4 text-sm font-semibold text-white">Save medical record</button>
+        <button className="mt-4 h-10 rounded-md bg-[#245b35] px-4 text-sm font-semibold text-white">{editingRecord ? "Update medical record" : "Save medical record"}</button>
       </form>
       <section className="min-w-0 space-y-4">
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -991,7 +1003,7 @@ function Medical({ data }: { data: DashboardData }) {
           <div className="grid gap-3 p-4 sm:grid-cols-2">
             {data.medicalRecords.length === 0 ? <p className="text-sm text-[#6a7669]">No medical records yet.</p> : data.medicalRecords.map((record) => (
               <div key={record.id} className="rounded-lg border border-[#e4ece1] p-4">
-                <div className="mb-3 flex items-center justify-between gap-3"><p className="font-medium">{record.displayDate}</p><form action={deleteMedicalRecord}><input type="hidden" name="id" value={record.id} /><button className="rounded-md border border-[#ead0cb] p-2 text-[#a13f32] hover:bg-[#fff4f2]"><Trash2 className="size-4" /></button></form></div>
+                <div className="mb-3 flex items-center justify-between gap-3"><p className="font-medium">{record.displayDate}</p><div className="flex gap-2"><button type="button" onClick={() => setEditingRecord(record)} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]"><Pencil className="size-4" /></button><form action={deleteMedicalRecord}><input type="hidden" name="id" value={record.id} /><button className="rounded-md border border-[#ead0cb] p-2 text-[#a13f32] hover:bg-[#fff4f2]"><Trash2 className="size-4" /></button></form></div></div>
                 <div className="grid grid-cols-2 gap-2 text-sm"><p>Weight: {round(record.weight)} kg</p><p>Height: {round(record.height)} cm</p><p>BMI: {round(record.bmi)}</p><p>BP: {round(record.bpHigh, 0)}/{round(record.bpLow, 0)}</p></div>
               </div>
             ))}

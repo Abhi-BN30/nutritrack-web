@@ -84,3 +84,19 @@ SET "proteinCarbRatio" = CASE
   ELSE NULL
 END
 WHERE "proteinCarbRatio" IS NULL;
+
+
+-- 7) Store original quantity input and metric for food logs so the UI can display
+-- values like "10 ml" or "2 no's." instead of only gram equivalents.
+ALTER TABLE food_logs ADD COLUMN IF NOT EXISTS "quantityValue" DOUBLE PRECISION;
+ALTER TABLE food_logs ADD COLUMN IF NOT EXISTS "quantityMetric" TEXT;
+
+UPDATE food_logs
+SET
+  "quantityValue" = COALESCE("quantityValue", "quantityGms"),
+  "quantityMetric" = COALESCE("quantityMetric", 'GRAMS')
+WHERE "quantityValue" IS NULL OR "quantityMetric" IS NULL;
+
+ALTER TABLE food_logs ALTER COLUMN "quantityValue" SET NOT NULL;
+ALTER TABLE food_logs ALTER COLUMN "quantityMetric" SET NOT NULL;
+ALTER TABLE food_logs ALTER COLUMN "quantityMetric" SET DEFAULT 'GRAMS';

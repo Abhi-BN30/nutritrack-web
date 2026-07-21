@@ -84,6 +84,8 @@ model FoodLog {
   foodItemId       String
   date             DateTime @default(now())
   dishName         String
+  quantityValue    Float
+  quantityMetric   String   @default("GRAMS")
   quantityGms      Float
   carbs            Float
   proteins         Float

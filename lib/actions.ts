@@ -379,8 +379,10 @@ export async function saveMedicalRecord(
   _state: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
+  const actor = await requireUser();
   const userId = await resolveWritableUserId(formValue(formData, "userId") || undefined);
   const parsed = medicalRecordSchema.safeParse({
+    id: formValue(formData, "id") || undefined,
     userId,
     date: formValue(formData, "date"),
     weight: formValue(formData, "weight"),
@@ -396,6 +398,29 @@ export async function saveMedicalRecord(
   const bmi = parsed.data.weight / Math.pow(parsed.data.height / 100, 2);
 
   try {
+    if (parsed.data.id) {
+      const existing = await prisma.medicalRecord.findUnique({ where: { id: parsed.data.id } });
+      if (!existing || (actor.role !== "ADMIN" && existing.userId !== actor.id)) {
+        return { message: "You cannot edit this biometric entry." };
+      }
+
+      await prisma.medicalRecord.update({
+        where: { id: parsed.data.id },
+        data: {
+          userId,
+          date: startOfDay(parsed.data.date),
+          weight: parsed.data.weight,
+          height: parsed.data.height,
+          bmi,
+          bpLow: parsed.data.bpLow,
+          bpHigh: parsed.data.bpHigh,
+        },
+      });
+
+      revalidatePath("/dashboard");
+      return { ok: true, message: "Medical record updated." };
+    }
+
     await prisma.medicalRecord.create({
       data: {
         userId,
@@ -460,6 +485,8 @@ export async function saveFoodLog(_state: ActionState, formData: FormData): Prom
           foodItemId: food.id,
           date: startOfDay(parsed.data.date),
           dishName: parsed.data.dishName,
+          quantityValue: parsed.data.quantityValue,
+          quantityMetric: parsed.data.quantityMetric,
           quantityGms,
           carbs,
           proteins,
@@ -479,6 +506,8 @@ export async function saveFoodLog(_state: ActionState, formData: FormData): Prom
         foodItemId: food.id,
         date: startOfDay(parsed.data.date),
         dishName: parsed.data.dishName,
+        quantityValue: parsed.data.quantityValue,
+        quantityMetric: parsed.data.quantityMetric,
         quantityGms,
         carbs,
         proteins,

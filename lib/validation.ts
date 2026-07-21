@@ -74,6 +74,7 @@ export const foodItemSchema = z.object({
 });
 
 export const medicalRecordSchema = z.object({
+  id: z.string().optional(),
   userId: z.string().optional(),
   date: z.coerce.date(),
   weight: z.coerce.number().positive(),

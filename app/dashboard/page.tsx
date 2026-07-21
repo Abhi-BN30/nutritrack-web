@@ -270,6 +270,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       date: isoDate(log.date),
       displayDate: displayDate(log.date),
       dishName: log.dishName,
+      quantityValue: log.quantityValue,
+      quantityMetric: log.quantityMetric as "GRAMS" | "ML" | "INTEGER",
       quantityGms: log.quantityGms,
       carbs: log.carbs,
       proteins: log.proteins,

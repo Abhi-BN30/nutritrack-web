@@ -6,16 +6,20 @@ import {
   Activity,
   Apple,
   BarChart3,
+  ChevronDown,
+  ChevronUp,
   Database,
   Download,
   HeartPulse,
   LockKeyhole,
   LogOut,
   Pencil,
+  Plus,
   ShieldCheck,
   Trash2,
   UserRound,
   Users,
+  X,
 } from "lucide-react";
 import {
   CartesianGrid,
@@ -779,7 +783,67 @@ function Tracker({ data }: { data: DashboardData }) {
   const [logFilter, setLogFilter] = useState<"all" | "withRatio" | "highProtein" | "highCalories">("all");
   const [logSort, setLogSort] = useState<"date_desc" | "date_asc" | "calories_desc" | "proteins_desc" | "carbs_desc">("date_desc");
   const [editingLog, setEditingLog] = useState<FoodLog | null>(null);
+  const [isLogModalOpen, setIsLogModalOpen] = useState(false);
   const [quantityMetric, setQuantityMetric] = useState<"GRAMS" | "ML" | "INTEGER">("GRAMS");
+  const [selectedFoodChoice, setSelectedFoodChoice] = useState("");
+  const [foodSearch, setFoodSearch] = useState("");
+
+  const foodOptions = useMemo(
+    () => [
+      ...data.foodItems.map((item) => ({
+        value: `MASTER:${item.id}`,
+        label: `${item.itemName} (Master)`,
+        searchText: `${item.itemName} master`,
+      })),
+      ...data.personalFoodItems.map((item) => ({
+        value: `PERSONAL:${item.id}`,
+        label: `${item.itemName} (My item)`,
+        searchText: `${item.itemName} my item personal ${item.ownerEmail}`,
+      })),
+    ],
+    [data.foodItems, data.personalFoodItems],
+  );
+
+  const filteredFoodOptions = useMemo(() => {
+    const keyword = foodSearch.trim().toLowerCase();
+    return foodOptions.filter((option) => {
+      if (option.value === selectedFoodChoice) {
+        return true;
+      }
+
+      return !keyword || option.searchText.toLowerCase().includes(keyword);
+    });
+  }, [foodOptions, foodSearch, selectedFoodChoice]);
+
+  const selectedFoodLabel = useMemo(
+    () => foodOptions.find((option) => option.value === selectedFoodChoice)?.label ?? "",
+    [foodOptions, selectedFoodChoice],
+  );
+
+  const closeLogModal = () => {
+    setIsLogModalOpen(false);
+    setEditingLog(null);
+    setQuantityMetric("GRAMS");
+    setSelectedFoodChoice("");
+    setFoodSearch("");
+  };
+
+  const openAddLogModal = () => {
+    setEditingLog(null);
+    setQuantityMetric("GRAMS");
+    setSelectedFoodChoice("");
+    setFoodSearch("");
+    setIsLogModalOpen(true);
+  };
+
+  const openEditLogModal = (log: FoodLog) => {
+    setEditingLog(log);
+    setSelectedDate(log.date);
+    setQuantityMetric(log.quantityMetric);
+    setSelectedFoodChoice(log.foodChoice);
+    setFoodSearch(log.foodItem);
+    setIsLogModalOpen(true);
+  };
 
   const selectedDateLogs = useMemo(() => data.foodLogs.filter((log) => log.date === selectedDate), [data.foodLogs, selectedDate]);
   const visibleLogs = useMemo(() => {
@@ -831,193 +895,294 @@ function Tracker({ data }: { data: DashboardData }) {
   );
 
   const targetForSelectedDate = resolveTargetForDate(data.targetProfiles, selectedDate);
-
   const quantityStep = quantityMetric === "INTEGER" ? "1" : "0.1";
 
   return (
-    <div className="space-y-5">
-      <div className="grid gap-5 2xl:grid-cols-[0.95fr_1.05fr]">
-        <section className="min-w-0 space-y-4">
-          <div className="rounded-lg border border-[#dbe5d8] bg-white p-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h2 className="font-semibold">Daily tracker</h2>
-                {/* <p className="text-sm text-[#6a7669]">Targets are resolved using the target values effective on the selected date.</p> */}
+    <>
+      <div className="space-y-5">
+        <div className="grid gap-5 2xl:grid-cols-[0.95fr_1.05fr]">
+          <section className="min-w-0 space-y-4">
+            <div className="rounded-lg border border-[#dbe5d8] bg-white p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h2 className="font-semibold">Daily tracker</h2>
+                </div>
+                <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-end">
+                  <div className="w-full sm:w-52">
+                    <label className="block">
+                      <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[#6a7669]">Viewing date</span>
+                      <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="h-10 w-full rounded-md border border-[#d8e2d5] bg-white px-3 text-sm outline-none focus:border-[#245b35]" />
+                    </label>
+                  </div>
+                  <button type="button" onClick={openAddLogModal} className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-[#245b35] px-4 text-sm font-semibold text-white hover:bg-[#1d4a2b]">
+                    <Plus className="size-4" />
+                    Add log
+                  </button>
+                </div>
               </div>
-              <div className="w-full sm:w-52">
-                <label className="block">
-                  <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[#6a7669]">Viewing date</span>
-                  <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="h-10 w-full rounded-md border border-[#d8e2d5] bg-white px-3 text-sm outline-none focus:border-[#245b35]" />
+            </div>
+
+            <TargetCards totals={selectedTotals} targets={targetForSelectedDate} />
+
+            <div className="rounded-lg border border-dashed border-[#dbe5d8] bg-white p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h2 className="font-semibold text-[#172117]">Log food intake</h2>
+                  <p className="mt-1 text-sm text-[#6a7669]">Use the popup form to add a new log or edit an existing one.</p>
+                </div>
+                <button type="button" onClick={openAddLogModal} className="inline-flex items-center justify-center gap-2 rounded-md border border-[#d8e2d5] px-4 py-2 text-sm font-medium hover:bg-[#f4f7f2]">
+                  <Plus className="size-4" />
+                  Open add log form
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <section className="min-w-0 rounded-lg border border-[#dbe5d8] bg-white">
+            <div className="border-b border-[#e4ece1] p-4">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <h2 className="font-semibold">Meals and Ingredients</h2>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" onClick={() => setShowAllLogs(false)} className={`rounded-md border px-3 py-2 text-sm ${!showAllLogs ? "border-[#245b35] bg-[#edf7ec] text-[#245b35]" : "border-[#d8e2d5] hover:bg-[#f4f7f2]"}`}>Selected day only</button>
+                  <button type="button" onClick={() => setShowAllLogs(true)} className={`rounded-md border px-3 py-2 text-sm ${showAllLogs ? "border-[#245b35] bg-[#edf7ec] text-[#245b35]" : "border-[#d8e2d5] hover:bg-[#f4f7f2]"}`}>Show all logs</button>
+                </div>
+              </div>
+              <TableControls
+                searchValue={search}
+                onSearchChange={setSearch}
+                searchPlaceholder="Search dish or food item"
+                filterValue={logFilter}
+                onFilterChange={(value) => setLogFilter(value as "all" | "withRatio" | "highProtein" | "highCalories")}
+                filterOptions={[
+                  { value: "all", label: "All entries" },
+                  { value: "withRatio", label: "Has P/C ratio" },
+                  { value: "highProtein", label: "High protein" },
+                  { value: "highCalories", label: "High calorie" },
+                ]}
+                sortValue={logSort}
+                onSortChange={(value) => setLogSort(value as "date_desc" | "date_asc" | "calories_desc" | "proteins_desc" | "carbs_desc")}
+                sortOptions={[
+                  { value: "date_desc", label: "Newest first" },
+                  { value: "date_asc", label: "Oldest first" },
+                  { value: "calories_desc", label: "Calories high to low" },
+                  { value: "proteins_desc", label: "Proteins high to low" },
+                  { value: "carbs_desc", label: "Carbs high to low" },
+                ]}
+              />
+            </div>
+            <div className="space-y-3 p-4 lg:hidden">
+              {visibleLogs.length === 0 ? <p className="rounded-lg border border-dashed border-[#d8e2d5] bg-[#f9fbf8] p-4 text-center text-sm text-[#6a7669]">No food logs found.</p> : visibleLogs.map((log) => (
+                <article key={log.id} className="rounded-lg border border-[#e4ece1] bg-[#f9fbf8] p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="font-medium text-[#172117]">{log.dishName}</p>
+                      <p className="text-sm text-[#6a7669]">{log.displayDate}</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button type="button" onClick={() => openEditLogModal(log)} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]"><Pencil className="size-4" /></button>
+                      <form action={deleteFoodLog}><input type="hidden" name="id" value={log.id} /><button className="rounded-md border border-[#ead0cb] p-2 text-[#a13f32] hover:bg-[#fff4f2]"><Trash2 className="size-4" /></button></form>
+                    </div>
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-3 text-sm text-[#4d5b4c]">
+                    <p><span className="font-medium text-[#172117]">Food:</span> {log.foodItem}</p>
+                    <p><span className="font-medium text-[#172117]">Qty:</span> {formatQuantityDisplay(log.quantityValue, log.quantityMetric)}</p>
+                    <p><span className="font-medium text-[#172117]">Carbs:</span> {round(log.carbs)}g</p>
+                    <p><span className="font-medium text-[#172117]">Proteins:</span> {round(log.proteins)}g</p>
+                    <p><span className="font-medium text-[#172117]">Fats:</span> {round(log.fats)}g</p>
+                    <p><span className="font-medium text-[#172117]">Calories:</span> {round(log.calories, 0)}</p>
+                  </div>
+                  <p className="mt-3 text-sm text-[#4d5b4c]"><span className="font-medium text-[#172117]">Protein/Carb ratio:</span> {log.proteinCarbRatio === null ? "-" : round(log.proteinCarbRatio)}</p>
+                </article>
+              ))}
+            </div>
+            <div className="hidden overflow-x-auto lg:block">
+              <table className="w-full min-w-[920px] text-sm">
+                <thead className="bg-[#f4f8f2] text-left">
+                  <tr>
+                    <th className="p-3">Date</th><th className="p-3">Dish</th><th className="p-3">Food item</th><th className="p-3">Qty</th><th className="p-3">Carbs</th><th className="p-3">Proteins</th><th className="p-3">Fats</th><th className="p-3">Calories</th><th className="p-3">Protein/Carb ratio</th><th className="p-3">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {visibleLogs.length === 0 ? <tr><td colSpan={10} className="p-5 text-center text-sm text-[#6a7669]">No food logs found.</td></tr> : visibleLogs.map((log) => (
+                    <tr key={log.id} className="border-t border-[#eef3ec]">
+                      <td className="p-3">{log.displayDate}</td><td className="p-3 font-medium">{log.dishName}</td><td className="p-3">{log.foodItem}</td><td className="p-3">{formatQuantityDisplay(log.quantityValue, log.quantityMetric)}</td><td className="p-3">{round(log.carbs)}g</td><td className="p-3">{round(log.proteins)}g</td><td className="p-3">{round(log.fats)}g</td><td className="p-3">{round(log.calories, 0)}</td><td className="p-3">{log.proteinCarbRatio === null ? "-" : round(log.proteinCarbRatio)}</td>
+                      <td className="p-3"><div className="flex gap-2"><button type="button" onClick={() => openEditLogModal(log)} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]"><Pencil className="size-4" /></button><form action={deleteFoodLog}><input type="hidden" name="id" value={log.id} /><button className="rounded-md border border-[#ead0cb] p-2 text-[#a13f32] hover:bg-[#fff4f2]"><Trash2 className="size-4" /></button></form></div></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      {isLogModalOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#172117]/45 p-4">
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl border border-[#dbe5d8] bg-white shadow-2xl">
+            <form key={editingLog?.id ?? "new-log"} action={action} className="p-4 sm:p-5">
+              <input name="id" type="hidden" value={editingLog?.id ?? ""} />
+              <input name="userId" type="hidden" value={data.selectedUser.id} />
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-semibold text-[#172117]">{editingLog ? "Edit food log" : "Add food log"}</h2>
+                  <p className="mt-1 text-sm text-[#6a7669]">Search the food list, select an item, and save your intake entry.</p>
+                </div>
+                <button type="button" onClick={closeLogModal} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]" aria-label="Close log popup">
+                  <X className="size-4" />
+                </button>
+              </div>
+
+              <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                <label className="sm:col-span-2">
+                  <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[#6a7669]">Search food item</span>
+                  <input
+                    type="text"
+                    value={foodSearch}
+                    onChange={(event) => setFoodSearch(event.target.value)}
+                    placeholder="Type to search master or personal foods"
+                    className="h-10 w-full rounded-md border border-[#d8e2d5] bg-white px-3 text-sm outline-none focus:border-[#245b35]"
+                  />
+                </label>
+
+                <label className="sm:col-span-2">
+                  <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[#6a7669]">Food item</span>
+                  <select
+                    name="foodChoice"
+                    value={selectedFoodChoice}
+                    onChange={(event) => setSelectedFoodChoice(event.target.value)}
+                    required
+                    className="h-10 w-full rounded-md border border-[#d8e2d5] bg-white px-3 text-sm"
+                  >
+                    <option value="">Select food</option>
+                    {filteredFoodOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                  </select>
+                  <p className="mt-1 text-xs text-[#6a7669]">{selectedFoodChoice ? `Selected: ${selectedFoodLabel}` : `${filteredFoodOptions.length} matching items`}</p>
+                </label>
+
+                <Field name="dishName" label="Dish / Meal / Description" defaultValue={editingLog?.dishName ?? ""} placeholder="Free Input Field" required />
+                <Field name="date" label="Date" type="date" defaultValue={editingLog?.date ?? selectedDate} required />
+                <Field name="quantityValue" label="Quantity" type="number" step={quantityStep} defaultValue={editingLog?.quantityValue ?? ""} required />
+                <label>
+                  <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[#6a7669]">Metric</span>
+                  <select name="quantityMetric" value={quantityMetric} onChange={(e) => setQuantityMetric(e.target.value as "GRAMS" | "ML" | "INTEGER")} className="h-10 w-full rounded-md border border-[#d8e2d5] bg-white px-3 text-sm">
+                    <option value="GRAMS">Grams</option>
+                    <option value="ML">ML</option>
+                    <option value="INTEGER">Integer</option>
+                  </select>
                 </label>
               </div>
-            </div>
-          </div>
 
-          <TargetCards totals={selectedTotals} targets={targetForSelectedDate} />
+              <div className="mt-4"><ActionMessage state={state} /></div>
 
-          <form key={editingLog?.id ?? "new-log"} action={action} className="rounded-lg border border-[#dbe5d8] bg-white p-4">
-            <input name="id" type="hidden" value={editingLog?.id ?? ""} />
-            <input name="userId" type="hidden" value={data.selectedUser.id} />
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <div>
-                <h2 className="font-semibold">{editingLog ? "Edit food log" : "Add food log"}</h2>
-                {/* <p className="text-sm text-[#6a7669]">Protein/carb ratio is calculated automatically from the selected food and metric-based quantity. Integer entries are treated as 1 serving = 100g, and ml entries are treated as ml-to-gram equivalents.</p> */}
+              <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <button type="button" onClick={closeLogModal} className="h-10 rounded-md border border-[#d8e2d5] px-4 text-sm font-semibold hover:bg-[#f4f7f2]">Cancel</button>
+                <button className="h-10 rounded-md bg-[#245b35] px-4 text-sm font-semibold text-white">{editingLog ? "Update log" : "Save log"}</button>
               </div>
-              {editingLog ? <button type="button" onClick={() => { setEditingLog(null); setQuantityMetric("GRAMS"); }} className="rounded-md border border-[#d8e2d5] px-3 py-2 text-sm font-medium hover:bg-[#f4f7f2]">Cancel edit</button> : null}
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label>
-                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[#6a7669]">Food item</span>
-                <select name="foodChoice" defaultValue={editingLog?.foodChoice ?? ""} required className="h-10 w-full rounded-md border border-[#d8e2d5] bg-white px-3 text-sm">
-                  <option value="">Select food</option>
-                  {data.foodItems.map((item) => <option key={`MASTER:${item.id}`} value={`MASTER:${item.id}`}>{item.itemName} (Master)</option>)}{data.personalFoodItems.map((item) => <option key={`PERSONAL:${item.id}`} value={`PERSONAL:${item.id}`}>{item.itemName} (My item)</option>)}
-                </select>
-              </label>
-              
-              <Field name="dishName" label="Dish / Meal / Description" defaultValue={editingLog?.dishName ?? ""} placeholder="Free Input Field" required />
-              {/* <Field name="quantityValue" label={quantityLabel} type="number" step={quantityStep} defaultValue={editingLog?.quantityValue ?? ""} required /> */}
-              <Field name="quantityValue" label="Quantity" type="number" step={quantityStep} defaultValue={editingLog?.quantityValue ?? ""} required />
-              <label>
-                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[#6a7669]">Metric</span>
-                <select name="quantityMetric" value={quantityMetric} onChange={(e) => setQuantityMetric(e.target.value as "GRAMS" | "ML" | "INTEGER")} className="h-10 w-full rounded-md border border-[#d8e2d5] bg-white px-3 text-sm">
-                  <option value="GRAMS">Grams</option>
-                  <option value="ML">ML</option>
-                  <option value="INTEGER">Integer</option>
-                </select>
-              </label>
-              <Field name="date" label="Date" type="date" defaultValue={editingLog?.date ?? selectedDate} required />
-            </div>
-            <div className="mt-4"><ActionMessage state={state} /></div>
-            <button className="mt-4 h-10 rounded-md bg-[#245b35] px-4 text-sm font-semibold text-white">{editingLog ? "Update log" : "Save log"}</button>
-          </form>
-        </section>
-
-        <section className="min-w-0 rounded-lg border border-[#dbe5d8] bg-white">
-          <div className="border-b border-[#e4ece1] p-4">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                <h2 className="font-semibold">Meals and Ingredients</h2>
-                {/* <p className="text-sm text-[#6a7669]">Use show-all to view the full history. By default the table shows only the selected day.</p> */}
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <button type="button" onClick={() => setShowAllLogs(false)} className={`rounded-md border px-3 py-2 text-sm ${!showAllLogs ? "border-[#245b35] bg-[#edf7ec] text-[#245b35]" : "border-[#d8e2d5] hover:bg-[#f4f7f2]"}`}>Selected day only</button>
-                <button type="button" onClick={() => setShowAllLogs(true)} className={`rounded-md border px-3 py-2 text-sm ${showAllLogs ? "border-[#245b35] bg-[#edf7ec] text-[#245b35]" : "border-[#d8e2d5] hover:bg-[#f4f7f2]"}`}>Show all logs</button>
-              </div>
-            </div>
-            <TableControls
-              searchValue={search}
-              onSearchChange={setSearch}
-              searchPlaceholder="Search dish or food item"
-              filterValue={logFilter}
-              onFilterChange={(value) => setLogFilter(value as "all" | "withRatio" | "highProtein" | "highCalories")}
-              filterOptions={[
-                { value: "all", label: "All entries" },
-                { value: "withRatio", label: "Has P/C ratio" },
-                { value: "highProtein", label: "High protein" },
-                { value: "highCalories", label: "High calorie" },
-              ]}
-              sortValue={logSort}
-              onSortChange={(value) => setLogSort(value as "date_desc" | "date_asc" | "calories_desc" | "proteins_desc" | "carbs_desc")}
-              sortOptions={[
-                { value: "date_desc", label: "Newest first" },
-                { value: "date_asc", label: "Oldest first" },
-                { value: "calories_desc", label: "Calories high to low" },
-                { value: "proteins_desc", label: "Proteins high to low" },
-                { value: "carbs_desc", label: "Carbs high to low" },
-              ]}
-            />
+            </form>
           </div>
-          <div className="space-y-3 p-4 lg:hidden">
-            {visibleLogs.length === 0 ? <p className="rounded-lg border border-dashed border-[#d8e2d5] bg-[#f9fbf8] p-4 text-center text-sm text-[#6a7669]">No food logs found.</p> : visibleLogs.map((log) => (
-              <article key={log.id} className="rounded-lg border border-[#e4ece1] bg-[#f9fbf8] p-4">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <p className="font-medium text-[#172117]">{log.dishName}</p>
-                    <p className="text-sm text-[#6a7669]">{log.displayDate}</p>
-                  </div>
-                  <div className="flex gap-2">
-                    <button type="button" onClick={() => { setEditingLog(log); setSelectedDate(log.date); setQuantityMetric(log.quantityMetric); }} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]"><Pencil className="size-4" /></button>
-                    <form action={deleteFoodLog}><input type="hidden" name="id" value={log.id} /><button className="rounded-md border border-[#ead0cb] p-2 text-[#a13f32] hover:bg-[#fff4f2]"><Trash2 className="size-4" /></button></form>
-                  </div>
-                </div>
-                <div className="mt-3 grid grid-cols-2 gap-3 text-sm text-[#4d5b4c]">
-                  <p><span className="font-medium text-[#172117]">Food:</span> {log.foodItem}</p>
-                  <p><span className="font-medium text-[#172117]">Qty:</span> {formatQuantityDisplay(log.quantityValue, log.quantityMetric)}</p>
-                  <p><span className="font-medium text-[#172117]">Carbs:</span> {round(log.carbs)}g</p>
-                  <p><span className="font-medium text-[#172117]">Proteins:</span> {round(log.proteins)}g</p>
-                  <p><span className="font-medium text-[#172117]">Fats:</span> {round(log.fats)}g</p>
-                  <p><span className="font-medium text-[#172117]">Calories:</span> {round(log.calories, 0)}</p>
-                </div>
-                <p className="mt-3 text-sm text-[#4d5b4c]"><span className="font-medium text-[#172117]">Protein/Carb ratio:</span> {log.proteinCarbRatio === null ? "-" : round(log.proteinCarbRatio)}</p>
-              </article>
-            ))}
-          </div>
-          <div className="hidden overflow-x-auto lg:block">
-            <table className="w-full min-w-[920px] text-sm">
-              <thead className="bg-[#f4f8f2] text-left">
-                <tr>
-                  <th className="p-3">Date</th><th className="p-3">Dish</th><th className="p-3">Food item</th><th className="p-3">Qty</th><th className="p-3">Carbs</th><th className="p-3">Proteins</th><th className="p-3">Fats</th><th className="p-3">Calories</th><th className="p-3">Protein/Carb ratio</th><th className="p-3">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {visibleLogs.length === 0 ? <tr><td colSpan={10} className="p-5 text-center text-sm text-[#6a7669]">No food logs found.</td></tr> : visibleLogs.map((log) => (
-                  <tr key={log.id} className="border-t border-[#eef3ec]">
-                    <td className="p-3">{log.displayDate}</td><td className="p-3 font-medium">{log.dishName}</td><td className="p-3">{log.foodItem}</td><td className="p-3">{formatQuantityDisplay(log.quantityValue, log.quantityMetric)}</td><td className="p-3">{round(log.carbs)}g</td><td className="p-3">{round(log.proteins)}g</td><td className="p-3">{round(log.fats)}g</td><td className="p-3">{round(log.calories, 0)}</td><td className="p-3">{log.proteinCarbRatio === null ? "-" : round(log.proteinCarbRatio)}</td>
-                    <td className="p-3"><div className="flex gap-2"><button type="button" onClick={() => { setEditingLog(log); setSelectedDate(log.date); setQuantityMetric(log.quantityMetric); }} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]"><Pencil className="size-4" /></button><form action={deleteFoodLog}><input type="hidden" name="id" value={log.id} /><button className="rounded-md border border-[#ead0cb] p-2 text-[#a13f32] hover:bg-[#fff4f2]"><Trash2 className="size-4" /></button></form></div></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      </div>
-    </div>
+        </div>
+      ) : null}
+    </>
   );
 }
 
 function Medical({ data }: { data: DashboardData }) {
   const [state, action] = useActionState(saveMedicalRecord, initialState);
   const [editingRecord, setEditingRecord] = useState<MedicalRecord | null>(null);
+  const [isMedicalModalOpen, setIsMedicalModalOpen] = useState(false);
+
+  const closeMedicalModal = () => {
+    setIsMedicalModalOpen(false);
+    setEditingRecord(null);
+  };
+
+  const openAddMedicalModal = () => {
+    setEditingRecord(null);
+    setIsMedicalModalOpen(true);
+  };
+
+  const openEditMedicalModal = (record: MedicalRecord) => {
+    setEditingRecord(record);
+    setIsMedicalModalOpen(true);
+  };
 
   return (
-    <div className="grid gap-5 xl:grid-cols-[0.82fr_1.18fr]">
-      <form key={editingRecord?.id ?? "new-medical-record"} action={action} className="rounded-lg border border-[#dbe5d8] bg-white p-4">
-        <input name="id" type="hidden" value={editingRecord?.id ?? ""} />
-        <input name="userId" type="hidden" value={data.selectedUser.id} />
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="font-semibold">{editingRecord ? "Edit biometric data" : "Add medical data"}</h2>
-          {editingRecord ? <button type="button" onClick={() => setEditingRecord(null)} className="rounded-md border border-[#d8e2d5] px-3 py-2 text-sm font-medium hover:bg-[#f4f7f2]">Cancel edit</button> : null}
-        </div>
-        {/* <p className="mt-1 text-sm text-[#6a7669]">Each update creates a new dated medical record.</p> */}
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <Field name="weight" label="Weight kg" type="number" step="0.1" defaultValue={editingRecord?.weight ?? ""} required />
-          <Field name="height" label="Height cm" type="number" step="0.1" defaultValue={editingRecord?.height ?? ""} required />
-          <Field name="bpHigh" label="Systolic BP" type="number" step="1" defaultValue={editingRecord?.bpHigh ?? ""} required />
-          <Field name="bpLow" label="Diastolic BP" type="number" step="1" defaultValue={editingRecord?.bpLow ?? ""} required />
-          <Field name="date" label="Date" type="date" defaultValue={editingRecord?.date ?? today} required />
-        </div>
-        <div className="mt-4"><ActionMessage state={state} /></div>
-        <button className="mt-4 h-10 rounded-md bg-[#245b35] px-4 text-sm font-semibold text-white">{editingRecord ? "Update medical record" : "Save medical record"}</button>
-      </form>
-      <section className="min-w-0 space-y-4">
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          <StatCard label="Latest BMI" value={data.medicalRecords[0] ? round(data.medicalRecords[0].bmi) : "-"} helper="" icon={HeartPulse} />
-          <StatCard label="Latest BP" value={data.medicalRecords[0] ? `${round(data.medicalRecords[0].bpHigh, 0)}/${round(data.medicalRecords[0].bpLow, 0)}` : "-"} helper="" icon={Activity} />
-          <StatCard label="Records" value={`${data.medicalRecords.length}`} helper="" icon={Database} />
-        </div>
-        <section className="min-w-0 rounded-lg border border-[#dbe5d8] bg-white">
-          <div className="border-b border-[#e4ece1] p-4"><h2 className="font-semibold">Biometric history</h2></div>
-          <div className="grid gap-3 p-4 sm:grid-cols-2">
-            {data.medicalRecords.length === 0 ? <p className="text-sm text-[#6a7669]">No medical records yet.</p> : data.medicalRecords.map((record) => (
-              <div key={record.id} className="rounded-lg border border-[#e4ece1] p-4">
-                <div className="mb-3 flex items-center justify-between gap-3"><p className="font-medium">{record.displayDate}</p><div className="flex gap-2"><button type="button" onClick={() => setEditingRecord(record)} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]"><Pencil className="size-4" /></button><form action={deleteMedicalRecord}><input type="hidden" name="id" value={record.id} /><button className="rounded-md border border-[#ead0cb] p-2 text-[#a13f32] hover:bg-[#fff4f2]"><Trash2 className="size-4" /></button></form></div></div>
-                <div className="grid grid-cols-2 gap-2 text-sm"><p>Weight: {round(record.weight)} kg</p><p>Height: {round(record.height)} cm</p><p>BMI: {round(record.bmi)}</p><p>BP: {round(record.bpHigh, 0)}/{round(record.bpLow, 0)}</p></div>
+    <>
+      <div className="grid gap-5 xl:grid-cols-[0.82fr_1.18fr]">
+        <section className="space-y-4">
+          <div className="rounded-lg border border-[#dbe5d8] bg-white p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="font-semibold">Biometric data</h2>
+                <p className="mt-1 text-sm text-[#6a7669]">Add a new biometric entry or edit an existing dated record through the popup form.</p>
               </div>
-            ))}
+              <button type="button" onClick={openAddMedicalModal} className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-[#245b35] px-4 text-sm font-semibold text-white hover:bg-[#1d4a2b]">
+                <Plus className="size-4" />
+                Add medical data
+              </button>
+            </div>
           </div>
         </section>
-      </section>
-    </div>
+        <section className="min-w-0 space-y-4">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <StatCard label="Latest BMI" value={data.medicalRecords[0] ? round(data.medicalRecords[0].bmi) : "-"} helper="" icon={HeartPulse} />
+            <StatCard label="Latest BP" value={data.medicalRecords[0] ? `${round(data.medicalRecords[0].bpHigh, 0)}/${round(data.medicalRecords[0].bpLow, 0)}` : "-"} helper="" icon={Activity} />
+            <StatCard label="Records" value={`${data.medicalRecords.length}`} helper="" icon={Database} />
+          </div>
+          <section className="min-w-0 rounded-lg border border-[#dbe5d8] bg-white">
+            <div className="flex items-center justify-between border-b border-[#e4ece1] p-4">
+              <h2 className="font-semibold">Biometric history</h2>
+              <button type="button" onClick={openAddMedicalModal} className="inline-flex items-center gap-2 rounded-md border border-[#d8e2d5] px-3 py-2 text-sm font-medium hover:bg-[#f4f7f2]">
+                <Plus className="size-4" />
+                Add entry
+              </button>
+            </div>
+            <div className="grid gap-3 p-4 sm:grid-cols-2">
+              {data.medicalRecords.length === 0 ? <p className="text-sm text-[#6a7669]">No medical records yet.</p> : data.medicalRecords.map((record) => (
+                <div key={record.id} className="rounded-lg border border-[#e4ece1] p-4">
+                  <div className="mb-3 flex items-center justify-between gap-3"><p className="font-medium">{record.displayDate}</p><div className="flex gap-2"><button type="button" onClick={() => openEditMedicalModal(record)} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]"><Pencil className="size-4" /></button><form action={deleteMedicalRecord}><input type="hidden" name="id" value={record.id} /><button className="rounded-md border border-[#ead0cb] p-2 text-[#a13f32] hover:bg-[#fff4f2]"><Trash2 className="size-4" /></button></form></div></div>
+                  <div className="grid grid-cols-2 gap-2 text-sm"><p>Weight: {round(record.weight)} kg</p><p>Height: {round(record.height)} cm</p><p>BMI: {round(record.bmi)}</p><p>BP: {round(record.bpHigh, 0)}/{round(record.bpLow, 0)}</p></div>
+                </div>
+              ))}
+            </div>
+          </section>
+        </section>
+      </div>
+
+      {isMedicalModalOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#172117]/45 p-4">
+          <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-xl border border-[#dbe5d8] bg-white shadow-2xl">
+            <form key={editingRecord?.id ?? "new-medical-record"} action={action} className="p-4 sm:p-5">
+              <input name="id" type="hidden" value={editingRecord?.id ?? ""} />
+              <input name="userId" type="hidden" value={data.selectedUser.id} />
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-semibold text-[#172117]">{editingRecord ? "Edit biometric data" : "Add medical data"}</h2>
+                  <p className="mt-1 text-sm text-[#6a7669]">Save a dated weight, height, blood pressure, and BMI record.</p>
+                </div>
+                <button type="button" onClick={closeMedicalModal} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]" aria-label="Close medical popup">
+                  <X className="size-4" />
+                </button>
+              </div>
+              <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                <Field name="weight" label="Weight kg" type="number" step="0.1" defaultValue={editingRecord?.weight ?? ""} required />
+                <Field name="height" label="Height cm" type="number" step="0.1" defaultValue={editingRecord?.height ?? ""} required />
+                <Field name="bpHigh" label="Systolic BP" type="number" step="1" defaultValue={editingRecord?.bpHigh ?? ""} required />
+                <Field name="bpLow" label="Diastolic BP" type="number" step="1" defaultValue={editingRecord?.bpLow ?? ""} required />
+                <Field name="date" label="Date" type="date" defaultValue={editingRecord?.date ?? today} required />
+              </div>
+              <div className="mt-4"><ActionMessage state={state} /></div>
+              <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <button type="button" onClick={closeMedicalModal} className="h-10 rounded-md border border-[#d8e2d5] px-4 text-sm font-semibold hover:bg-[#f4f7f2]">Cancel</button>
+                <button className="h-10 rounded-md bg-[#245b35] px-4 text-sm font-semibold text-white">{editingRecord ? "Update medical record" : "Save medical record"}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
+    </>
   );
 }
 
@@ -1339,14 +1504,48 @@ function DatabaseTab({ data }: { data: DashboardData }) {
   const [personalState, personalAction] = useActionState(savePersonalFoodItem, initialState);
   const [editingMasterFood, setEditingMasterFood] = useState<FoodItem | null>(null);
   const [editingPersonalFood, setEditingPersonalFood] = useState<PersonalFoodItem | null>(null);
+  const [isMasterModalOpen, setIsMasterModalOpen] = useState(false);
+  const [isPersonalModalOpen, setIsPersonalModalOpen] = useState(false);
   const [foodSearch, setFoodSearch] = useState("");
   const [foodFilter, setFoodFilter] = useState<"all" | "highProtein" | "highCalories" | "lowCarb">("all");
   const [foodSort, setFoodSort] = useState<"name_asc" | "name_desc" | "calories_desc" | "proteins_desc" | "carbs_asc">("name_asc");
+  const [masterTableExpanded, setMasterTableExpanded] = useState(true);
   const [personalSearch, setPersonalSearch] = useState("");
   const [personalFilter, setPersonalFilter] = useState<"all" | "highProtein" | "highCalories" | "lowCarb">("all");
   const [personalSort, setPersonalSort] = useState<"name_asc" | "name_desc" | "calories_desc" | "proteins_desc" | "carbs_asc">("name_asc");
+  const [personalTableExpanded, setPersonalTableExpanded] = useState(true);
   const canEditMaster = data.currentUser.role === "ADMIN";
   const canManagePersonal = data.currentUser.role === "USER";
+
+  const openAddMasterModal = () => {
+    setEditingMasterFood(null);
+    setIsMasterModalOpen(true);
+  };
+
+  const openEditMasterModal = (item: FoodItem) => {
+    setEditingMasterFood(item);
+    setIsMasterModalOpen(true);
+  };
+
+  const closeMasterModal = () => {
+    setIsMasterModalOpen(false);
+    setEditingMasterFood(null);
+  };
+
+  const openAddPersonalModal = () => {
+    setEditingPersonalFood(null);
+    setIsPersonalModalOpen(true);
+  };
+
+  const openEditPersonalModal = (item: PersonalFoodItem) => {
+    setEditingPersonalFood(item);
+    setIsPersonalModalOpen(true);
+  };
+
+  const closePersonalModal = () => {
+    setIsPersonalModalOpen(false);
+    setEditingPersonalFood(null);
+  };
 
   const filteredFoodItems = useMemo(() => {
     const keyword = foodSearch.trim().toLowerCase();
@@ -1415,151 +1614,211 @@ function DatabaseTab({ data }: { data: DashboardData }) {
   }, [data.personalFoodItems, personalFilter, personalSearch, personalSort]);
 
   return (
-    <div className="grid gap-5 xl:grid-cols-[0.82fr_1.18fr]">
-      <section className="space-y-5">
-        {canEditMaster ? (
-          <form key={editingMasterFood?.id ?? "new-master-food"} action={masterAction} className="rounded-lg border border-[#dbe5d8] bg-white p-4">
-            <input type="hidden" name="id" value={editingMasterFood?.id ?? ""} />
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h2 className="font-semibold">Master food table</h2>
-                <p className="mt-1 text-sm text-[#6a7669]">Only admins can maintain the shared master nutrition list.</p>
+    <>
+      <div className="grid gap-5 xl:grid-cols-[0.82fr_1.18fr]">
+        <section className="space-y-5">
+          {canEditMaster ? (
+            <div className="rounded-lg border border-[#dbe5d8] bg-white p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h2 className="font-semibold">Master food table</h2>
+                  <p className="mt-1 text-sm text-[#6a7669]">Only admins can maintain the shared master nutrition list.</p>
+                </div>
+                <button type="button" onClick={openAddMasterModal} className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-[#245b35] px-4 text-sm font-semibold text-white hover:bg-[#1d4a2b]">
+                  <Plus className="size-4" />
+                  Add master item
+                </button>
               </div>
-              {editingMasterFood ? <button type="button" onClick={() => setEditingMasterFood(null)} className="rounded-md border border-[#d8e2d5] px-3 py-2 text-sm font-medium hover:bg-[#f4f7f2]">Cancel edit</button> : null}
             </div>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <Field name="itemName" label="Item name" defaultValue={editingMasterFood?.itemName ?? ""} required />
-              <Field name="carbohydrates" label="Carbohydrates" type="number" step="0.1" defaultValue={editingMasterFood?.carbohydrates ?? ""} required />
-              <Field name="proteins" label="Proteins" type="number" step="0.1" defaultValue={editingMasterFood?.proteins ?? ""} required />
-              <Field name="fats" label="Fats" type="number" step="0.1" defaultValue={editingMasterFood?.fats ?? ""} required />
-              <Field name="calories" label="Calories" type="number" step="0.1" defaultValue={editingMasterFood?.calories ?? ""} required />
-            </div>
-            <div className="mt-4"><ActionMessage state={masterState} /></div>
-            <button className="mt-4 h-10 rounded-md bg-[#245b35] px-4 text-sm font-semibold text-white">{editingMasterFood ? "Update master item" : "Save master item"}</button>
-          </form>
-        ) : null}
+          ) : null}
 
-        {canManagePersonal ? (
-          <form key={editingPersonalFood?.id ?? "new-personal-food"} action={personalAction} className="rounded-lg border border-[#dbe5d8] bg-white p-4">
-            <input type="hidden" name="id" value={editingPersonalFood?.id ?? ""} />
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h2 className="font-semibold">My personal food items</h2>
-                <p className="mt-1 text-sm text-[#6a7669]">These are private to your account and do not modify the master food database.</p>
+          {canManagePersonal ? (
+            <div className="rounded-lg border border-[#dbe5d8] bg-white p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h2 className="font-semibold">My personal food items</h2>
+                  <p className="mt-1 text-sm text-[#6a7669]">These are private to your account and do not modify the master food database.</p>
+                </div>
+                <button type="button" onClick={openAddPersonalModal} className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-[#245b35] px-4 text-sm font-semibold text-white hover:bg-[#1d4a2b]">
+                  <Plus className="size-4" />
+                  Add my item
+                </button>
               </div>
-              {editingPersonalFood ? <button type="button" onClick={() => setEditingPersonalFood(null)} className="rounded-md border border-[#d8e2d5] px-3 py-2 text-sm font-medium hover:bg-[#f4f7f2]">Cancel edit</button> : null}
             </div>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <Field name="itemName" label="Item name" defaultValue={editingPersonalFood?.itemName ?? ""} required />
-              <Field name="carbohydrates" label="Carbohydrates" type="number" step="0.1" defaultValue={editingPersonalFood?.carbohydrates ?? ""} required />
-              <Field name="proteins" label="Proteins" type="number" step="0.1" defaultValue={editingPersonalFood?.proteins ?? ""} required />
-              <Field name="fats" label="Fats" type="number" step="0.1" defaultValue={editingPersonalFood?.fats ?? ""} required />
-              <Field name="calories" label="Calories" type="number" step="0.1" defaultValue={editingPersonalFood?.calories ?? ""} required />
-            </div>
-            <div className="mt-4"><ActionMessage state={personalState} /></div>
-            <button className="mt-4 h-10 rounded-md bg-[#245b35] px-4 text-sm font-semibold text-white">{editingPersonalFood ? "Update my item" : "Save my item"}</button>
-          </form>
-        ) : null}
-      </section>
-
-      <section className="min-w-0 space-y-5">
-        <section className="min-w-0 rounded-lg border border-[#dbe5d8] bg-white">
-          <div className="flex items-center justify-between border-b border-[#e4ece1] p-4">
-            <div>
-              <h2 className="font-semibold">Master food items</h2>
-              <p className="text-sm text-[#6a7669]">Shared list visible to all users.</p>
-            </div>
-            <button onClick={() => downloadCsv("nutritrack-food-master.csv", [["Item", "Carbohydrates", "Proteins", "Fats", "Calories"], ...filteredFoodItems.map((item) => [item.itemName, item.carbohydrates, item.proteins, item.fats, item.calories])])} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]"><Download className="size-4" /></button>
-          </div>
-          <div className="px-4 pb-4">
-            <TableControls
-              searchValue={foodSearch}
-              onSearchChange={setFoodSearch}
-              searchPlaceholder="Search master food item"
-              filterValue={foodFilter}
-              onFilterChange={(value) => setFoodFilter(value as "all" | "highProtein" | "highCalories" | "lowCarb")}
-              filterOptions={[
-                { value: "all", label: "All foods" },
-                { value: "highProtein", label: "High protein" },
-                { value: "highCalories", label: "High calorie" },
-                { value: "lowCarb", label: "Low carb" },
-              ]}
-              sortValue={foodSort}
-              onSortChange={(value) => setFoodSort(value as "name_asc" | "name_desc" | "calories_desc" | "proteins_desc" | "carbs_asc")}
-              sortOptions={[
-                { value: "name_asc", label: "Name A to Z" },
-                { value: "name_desc", label: "Name Z to A" },
-                { value: "calories_desc", label: "Calories high to low" },
-                { value: "proteins_desc", label: "Proteins high to low" },
-                { value: "carbs_asc", label: "Carbs low to high" },
-              ]}
-            />
-          </div>
-          <div className="space-y-3 px-4 pb-4 lg:hidden">
-            {filteredFoodItems.length === 0 ? <p className="rounded-lg border border-dashed border-[#d8e2d5] bg-[#f9fbf8] p-4 text-center text-sm text-[#6a7669]">No master food items found.</p> : filteredFoodItems.map((item) => <article key={item.id} className="rounded-lg border border-[#e4ece1] bg-[#f9fbf8] p-4"><div className="flex items-start justify-between gap-3"><p className="font-medium text-[#172117]">{item.itemName}</p>{canEditMaster ? <button type="button" onClick={() => setEditingMasterFood(item)} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]"><Pencil className="size-4" /></button> : null}</div><div className="mt-3 grid grid-cols-2 gap-3 text-sm text-[#4d5b4c]"><p><span className="font-medium text-[#172117]">Carbs:</span> {round(item.carbohydrates)}g</p><p><span className="font-medium text-[#172117]">Proteins:</span> {round(item.proteins)}g</p><p><span className="font-medium text-[#172117]">Fats:</span> {round(item.fats)}g</p><p><span className="font-medium text-[#172117]">Calories:</span> {round(item.calories, 0)}</p></div></article>)}
-          </div>
-          <div className="hidden overflow-x-auto lg:block">
-            <table className="w-full min-w-[760px] text-sm">
-              <thead className="bg-[#f4f8f2] text-left"><tr><th className="p-3">Item</th><th className="p-3">Carbs</th><th className="p-3">Proteins</th><th className="p-3">Fats</th><th className="p-3">Calories</th>{canEditMaster ? <th className="p-3">Actions</th> : null}</tr></thead>
-              <tbody>{filteredFoodItems.length === 0 ? <tr><td colSpan={canEditMaster ? 6 : 5} className="p-4 text-center text-[#6a7669]">No master food items found.</td></tr> : filteredFoodItems.map((item) => <tr key={item.id} className="border-t border-[#eef3ec]"><td className="p-3 font-medium">{item.itemName}</td><td className="p-3">{round(item.carbohydrates)}g</td><td className="p-3">{round(item.proteins)}g</td><td className="p-3">{round(item.fats)}g</td><td className="p-3">{round(item.calories, 0)}</td>{canEditMaster ? <td className="p-3"><button type="button" onClick={() => setEditingMasterFood(item)} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]"><Pencil className="size-4" /></button></td> : null}</tr>)}</tbody>
-            </table>
-          </div>
+          ) : null}
         </section>
 
-        <section className="min-w-0 rounded-lg border border-[#dbe5d8] bg-white">
-          <div className="flex items-center justify-between border-b border-[#e4ece1] p-4">
-            <div>
-              <h2 className="font-semibold">Personal food items</h2>
-              <p className="text-sm text-[#6a7669]">Private food items for {data.selectedUser.email}.</p>
+        <section className="min-w-0 space-y-5">
+          <section className="min-w-0 rounded-lg border border-[#dbe5d8] bg-white">
+            <div className="flex items-center justify-between border-b border-[#e4ece1] p-4">
+              <div>
+                <h2 className="font-semibold">Master food items</h2>
+                <p className="text-sm text-[#6a7669]">Shared list visible to all users.</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button onClick={() => downloadCsv("nutritrack-food-master.csv", [["Item", "Carbohydrates", "Proteins", "Fats", "Calories"], ...filteredFoodItems.map((item) => [item.itemName, item.carbohydrates, item.proteins, item.fats, item.calories])])} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]" aria-label="Download master food items"><Download className="size-4" /></button>
+                <button type="button" onClick={() => setMasterTableExpanded((value) => !value)} className="inline-flex items-center gap-2 rounded-md border border-[#d8e2d5] px-3 py-2 text-sm font-medium hover:bg-[#f4f7f2]">{masterTableExpanded ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}{masterTableExpanded ? "Collapse" : "Expand"}</button>
+              </div>
             </div>
-            <button onClick={() => downloadCsv("nutritrack-personal-food-items.csv", [["Item", "Owner Email", "Carbohydrates", "Proteins", "Fats", "Calories"], ...filteredPersonalFoodItems.map((item) => [item.itemName, item.ownerEmail, item.carbohydrates, item.proteins, item.fats, item.calories])])} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]"><Download className="size-4" /></button>
-          </div>
-          <div className="px-4 pb-4">
-            <TableControls
-              searchValue={personalSearch}
-              onSearchChange={setPersonalSearch}
-              searchPlaceholder="Search personal food item"
-              filterValue={personalFilter}
-              onFilterChange={(value) => setPersonalFilter(value as "all" | "highProtein" | "highCalories" | "lowCarb")}
-              filterOptions={[
-                { value: "all", label: "All foods" },
-                { value: "highProtein", label: "High protein" },
-                { value: "highCalories", label: "High calorie" },
-                { value: "lowCarb", label: "Low carb" },
-              ]}
-              sortValue={personalSort}
-              onSortChange={(value) => setPersonalSort(value as "name_asc" | "name_desc" | "calories_desc" | "proteins_desc" | "carbs_asc")}
-              sortOptions={[
-                { value: "name_asc", label: "Name A to Z" },
-                { value: "name_desc", label: "Name Z to A" },
-                { value: "calories_desc", label: "Calories high to low" },
-                { value: "proteins_desc", label: "Proteins high to low" },
-                { value: "carbs_asc", label: "Carbs low to high" },
-              ]}
-            />
-          </div>
-          <div className="space-y-3 px-4 pb-4 lg:hidden">
-            {filteredPersonalFoodItems.length === 0 ? <p className="rounded-lg border border-dashed border-[#d8e2d5] bg-[#f9fbf8] p-4 text-center text-sm text-[#6a7669]">No personal food items found.</p> : filteredPersonalFoodItems.map((item) => <article key={item.id} className="rounded-lg border border-[#e4ece1] bg-[#f9fbf8] p-4"><div className="flex items-start justify-between gap-3"><div><p className="font-medium text-[#172117]">{item.itemName}</p><p className="text-sm text-[#6a7669]">{item.ownerEmail}</p></div>{canManagePersonal ? <div className="flex gap-2"><button type="button" onClick={() => setEditingPersonalFood(item)} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]"><Pencil className="size-4" /></button><form action={deletePersonalFoodItem}><input type="hidden" name="id" value={item.id} /><button className="rounded-md border border-[#ead0cb] p-2 text-[#a13f32] hover:bg-[#fff4f2]"><Trash2 className="size-4" /></button></form></div> : null}</div><div className="mt-3 grid grid-cols-2 gap-3 text-sm text-[#4d5b4c]"><p><span className="font-medium text-[#172117]">Carbs:</span> {round(item.carbohydrates)}g</p><p><span className="font-medium text-[#172117]">Proteins:</span> {round(item.proteins)}g</p><p><span className="font-medium text-[#172117]">Fats:</span> {round(item.fats)}g</p><p><span className="font-medium text-[#172117]">Calories:</span> {round(item.calories, 0)}</p></div></article>)}
-          </div>
-          <div className="hidden overflow-x-auto lg:block">
-            <table className="w-full min-w-[760px] text-sm">
-              <thead className="bg-[#f4f8f2] text-left">
-                <tr>
-                  <th className="p-3">Item</th>
-                  {/* <th className="p-3">Owner Email</th> */}
-                  <th className="p-3">Carbs</th>
-                  <th className="p-3">Proteins</th>
-                  <th className="p-3">Fats</th>
-                  <th className="p-3">Calories</th>
-                  {canManagePersonal ? <th className="p-3">Actions</th> : null}
-                </tr>
-              </thead>
-              <tbody>{filteredPersonalFoodItems.length === 0 ? <tr><td colSpan={canManagePersonal ? 7 : 6} className="p-4 text-center text-[#6a7669]">No personal food items found.</td></tr> : filteredPersonalFoodItems.map((item) => <tr key={item.id} className="border-t border-[#eef3ec]"><td className="p-3 font-medium">{item.itemName}</td><td className="p-3">{item.ownerEmail}</td><td className="p-3">{round(item.carbohydrates)}g</td><td className="p-3">{round(item.proteins)}g</td><td className="p-3">{round(item.fats)}g</td><td className="p-3">{round(item.calories, 0)}</td>{canManagePersonal ? <td className="p-3"><div className="flex gap-2"><button type="button" onClick={() => setEditingPersonalFood(item)} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]"><Pencil className="size-4" /></button><form action={deletePersonalFoodItem}><input type="hidden" name="id" value={item.id} /><button className="rounded-md border border-[#ead0cb] p-2 text-[#a13f32] hover:bg-[#fff4f2]"><Trash2 className="size-4" /></button></form></div></td> : null}</tr>)}</tbody>
-            </table>
-          </div>
+            {masterTableExpanded ? <>
+            <div className="px-4 pb-4">
+              <TableControls
+                searchValue={foodSearch}
+                onSearchChange={setFoodSearch}
+                searchPlaceholder="Search master food item"
+                filterValue={foodFilter}
+                onFilterChange={(value) => setFoodFilter(value as "all" | "highProtein" | "highCalories" | "lowCarb")}
+                filterOptions={[
+                  { value: "all", label: "All foods" },
+                  { value: "highProtein", label: "High protein" },
+                  { value: "highCalories", label: "High calorie" },
+                  { value: "lowCarb", label: "Low carb" },
+                ]}
+                sortValue={foodSort}
+                onSortChange={(value) => setFoodSort(value as "name_asc" | "name_desc" | "calories_desc" | "proteins_desc" | "carbs_asc")}
+                sortOptions={[
+                  { value: "name_asc", label: "Name A to Z" },
+                  { value: "name_desc", label: "Name Z to A" },
+                  { value: "calories_desc", label: "Calories high to low" },
+                  { value: "proteins_desc", label: "Proteins high to low" },
+                  { value: "carbs_asc", label: "Carbs low to high" },
+                ]}
+              />
+            </div>
+            <div className="space-y-3 px-4 pb-4 lg:hidden">
+              {filteredFoodItems.length === 0 ? <p className="rounded-lg border border-dashed border-[#d8e2d5] bg-[#f9fbf8] p-4 text-center text-sm text-[#6a7669]">No master food items found.</p> : filteredFoodItems.map((item) => <article key={item.id} className="rounded-lg border border-[#e4ece1] bg-[#f9fbf8] p-4"><div className="flex items-start justify-between gap-3"><p className="font-medium text-[#172117]">{item.itemName}</p>{canEditMaster ? <button type="button" onClick={() => openEditMasterModal(item)} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]"><Pencil className="size-4" /></button> : null}</div><div className="mt-3 grid grid-cols-2 gap-3 text-sm text-[#4d5b4c]"><p><span className="font-medium text-[#172117]">Carbs:</span> {round(item.carbohydrates)}g</p><p><span className="font-medium text-[#172117]">Proteins:</span> {round(item.proteins)}g</p><p><span className="font-medium text-[#172117]">Fats:</span> {round(item.fats)}g</p><p><span className="font-medium text-[#172117]">Calories:</span> {round(item.calories, 0)}</p></div></article>)}
+            </div>
+            <div className="hidden overflow-x-auto lg:block">
+              <table className="w-full min-w-[760px] text-sm">
+                <thead className="bg-[#f4f8f2] text-left"><tr><th className="p-3">Item</th><th className="p-3">Carbs</th><th className="p-3">Proteins</th><th className="p-3">Fats</th><th className="p-3">Calories</th>{canEditMaster ? <th className="p-3">Actions</th> : null}</tr></thead>
+                <tbody>{filteredFoodItems.length === 0 ? <tr><td colSpan={canEditMaster ? 6 : 5} className="p-4 text-center text-[#6a7669]">No master food items found.</td></tr> : filteredFoodItems.map((item) => <tr key={item.id} className="border-t border-[#eef3ec]"><td className="p-3 font-medium">{item.itemName}</td><td className="p-3">{round(item.carbohydrates)}g</td><td className="p-3">{round(item.proteins)}g</td><td className="p-3">{round(item.fats)}g</td><td className="p-3">{round(item.calories, 0)}</td>{canEditMaster ? <td className="p-3"><button type="button" onClick={() => openEditMasterModal(item)} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]"><Pencil className="size-4" /></button></td> : null}</tr>)}</tbody>
+              </table>
+            </div>
+            </> : <p className="p-4 text-sm text-[#6a7669]">Master food table is collapsed.</p>}
+          </section>
+
+          <section className="min-w-0 rounded-lg border border-[#dbe5d8] bg-white">
+            <div className="flex items-center justify-between border-b border-[#e4ece1] p-4">
+              <div>
+                <h2 className="font-semibold">Personal food items</h2>
+                <p className="text-sm text-[#6a7669]">Private food items for {data.selectedUser.email}.</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button onClick={() => downloadCsv("nutritrack-personal-food-items.csv", [["Item", "Owner Email", "Carbohydrates", "Proteins", "Fats", "Calories"], ...filteredPersonalFoodItems.map((item) => [item.itemName, item.ownerEmail, item.carbohydrates, item.proteins, item.fats, item.calories])])} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]" aria-label="Download personal food items"><Download className="size-4" /></button>
+                <button type="button" onClick={() => setPersonalTableExpanded((value) => !value)} className="inline-flex items-center gap-2 rounded-md border border-[#d8e2d5] px-3 py-2 text-sm font-medium hover:bg-[#f4f7f2]">{personalTableExpanded ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}{personalTableExpanded ? "Collapse" : "Expand"}</button>
+              </div>
+            </div>
+            {personalTableExpanded ? <>
+            <div className="px-4 pb-4">
+              <TableControls
+                searchValue={personalSearch}
+                onSearchChange={setPersonalSearch}
+                searchPlaceholder="Search personal food item"
+                filterValue={personalFilter}
+                onFilterChange={(value) => setPersonalFilter(value as "all" | "highProtein" | "highCalories" | "lowCarb")}
+                filterOptions={[
+                  { value: "all", label: "All foods" },
+                  { value: "highProtein", label: "High protein" },
+                  { value: "highCalories", label: "High calorie" },
+                  { value: "lowCarb", label: "Low carb" },
+                ]}
+                sortValue={personalSort}
+                onSortChange={(value) => setPersonalSort(value as "name_asc" | "name_desc" | "calories_desc" | "proteins_desc" | "carbs_asc")}
+                sortOptions={[
+                  { value: "name_asc", label: "Name A to Z" },
+                  { value: "name_desc", label: "Name Z to A" },
+                  { value: "calories_desc", label: "Calories high to low" },
+                  { value: "proteins_desc", label: "Proteins high to low" },
+                  { value: "carbs_asc", label: "Carbs low to high" },
+                ]}
+              />
+            </div>
+            <div className="space-y-3 px-4 pb-4 lg:hidden">
+              {filteredPersonalFoodItems.length === 0 ? <p className="rounded-lg border border-dashed border-[#d8e2d5] bg-[#f9fbf8] p-4 text-center text-sm text-[#6a7669]">No personal food items found.</p> : filteredPersonalFoodItems.map((item) => <article key={item.id} className="rounded-lg border border-[#e4ece1] bg-[#f9fbf8] p-4"><div className="flex items-start justify-between gap-3"><div><p className="font-medium text-[#172117]">{item.itemName}</p><p className="text-sm text-[#6a7669]">{item.ownerEmail}</p></div>{canManagePersonal ? <div className="flex gap-2"><button type="button" onClick={() => openEditPersonalModal(item)} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]"><Pencil className="size-4" /></button><form action={deletePersonalFoodItem}><input type="hidden" name="id" value={item.id} /><button className="rounded-md border border-[#ead0cb] p-2 text-[#a13f32] hover:bg-[#fff4f2]"><Trash2 className="size-4" /></button></form></div> : null}</div><div className="mt-3 grid grid-cols-2 gap-3 text-sm text-[#4d5b4c]"><p><span className="font-medium text-[#172117]">Carbs:</span> {round(item.carbohydrates)}g</p><p><span className="font-medium text-[#172117]">Proteins:</span> {round(item.proteins)}g</p><p><span className="font-medium text-[#172117]">Fats:</span> {round(item.fats)}g</p><p><span className="font-medium text-[#172117]">Calories:</span> {round(item.calories, 0)}</p></div></article>)}
+            </div>
+            <div className="hidden overflow-x-auto lg:block">
+              <table className="w-full min-w-[760px] text-sm">
+                <thead className="bg-[#f4f8f2] text-left">
+                  <tr>
+                    <th className="p-3">Item</th>
+                    {/* <th className="p-3">Owner Email</th> */}
+                    <th className="p-3">Carbs</th>
+                    <th className="p-3">Proteins</th>
+                    <th className="p-3">Fats</th>
+                    <th className="p-3">Calories</th>
+                    {canManagePersonal ? <th className="p-3">Actions</th> : null}
+                  </tr>
+                </thead>
+                <tbody>{filteredPersonalFoodItems.length === 0 ? <tr><td colSpan={canManagePersonal ? 7 : 6} className="p-4 text-center text-[#6a7669]">No personal food items found.</td></tr> : filteredPersonalFoodItems.map((item) => <tr key={item.id} className="border-t border-[#eef3ec]"><td className="p-3 font-medium">{item.itemName}</td><td className="p-3">{item.ownerEmail}</td><td className="p-3">{round(item.carbohydrates)}g</td><td className="p-3">{round(item.proteins)}g</td><td className="p-3">{round(item.fats)}g</td><td className="p-3">{round(item.calories, 0)}</td>{canManagePersonal ? <td className="p-3"><div className="flex gap-2"><button type="button" onClick={() => openEditPersonalModal(item)} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]"><Pencil className="size-4" /></button><form action={deletePersonalFoodItem}><input type="hidden" name="id" value={item.id} /><button className="rounded-md border border-[#ead0cb] p-2 text-[#a13f32] hover:bg-[#fff4f2]"><Trash2 className="size-4" /></button></form></div></td> : null}</tr>)}</tbody>
+              </table>
+            </div>
+            </> : <p className="p-4 text-sm text-[#6a7669]">Personal food table is collapsed.</p>}
+          </section>
         </section>
-      </section>
-    </div>
+      </div>
+
+      {isMasterModalOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#172117]/45 p-4">
+          <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-xl border border-[#dbe5d8] bg-white shadow-2xl">
+            <form key={editingMasterFood?.id ?? "new-master-food"} action={masterAction} className="p-4 sm:p-5">
+              <input type="hidden" name="id" value={editingMasterFood?.id ?? ""} />
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-semibold text-[#172117]">{editingMasterFood ? "Edit master food item" : "Add master food item"}</h2>
+                  <p className="mt-1 text-sm text-[#6a7669]">Maintain the shared master nutrition table.</p>
+                </div>
+                <button type="button" onClick={closeMasterModal} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]" aria-label="Close master item popup">
+                  <X className="size-4" />
+                </button>
+              </div>
+              <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                <Field name="itemName" label="Item name" defaultValue={editingMasterFood?.itemName ?? ""} required />
+                <Field name="carbohydrates" label="Carbohydrates" type="number" step="0.1" defaultValue={editingMasterFood?.carbohydrates ?? ""} required />
+                <Field name="proteins" label="Proteins" type="number" step="0.1" defaultValue={editingMasterFood?.proteins ?? ""} required />
+                <Field name="fats" label="Fats" type="number" step="0.1" defaultValue={editingMasterFood?.fats ?? ""} required />
+                <Field name="calories" label="Calories" type="number" step="0.1" defaultValue={editingMasterFood?.calories ?? ""} required />
+              </div>
+              <div className="mt-4"><ActionMessage state={masterState} /></div>
+              <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <button type="button" onClick={closeMasterModal} className="h-10 rounded-md border border-[#d8e2d5] px-4 text-sm font-semibold hover:bg-[#f4f7f2]">Cancel</button>
+                <button className="h-10 rounded-md bg-[#245b35] px-4 text-sm font-semibold text-white">{editingMasterFood ? "Update master item" : "Save master item"}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
+
+      {isPersonalModalOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#172117]/45 p-4">
+          <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-xl border border-[#dbe5d8] bg-white shadow-2xl">
+            <form key={editingPersonalFood?.id ?? "new-personal-food"} action={personalAction} className="p-4 sm:p-5">
+              <input type="hidden" name="id" value={editingPersonalFood?.id ?? ""} />
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-semibold text-[#172117]">{editingPersonalFood ? "Edit personal food item" : "Add personal food item"}</h2>
+                  <p className="mt-1 text-sm text-[#6a7669]">These items remain private to your account.</p>
+                </div>
+                <button type="button" onClick={closePersonalModal} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]" aria-label="Close personal item popup">
+                  <X className="size-4" />
+                </button>
+              </div>
+              <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                <Field name="itemName" label="Item name" defaultValue={editingPersonalFood?.itemName ?? ""} required />
+                <Field name="carbohydrates" label="Carbohydrates" type="number" step="0.1" defaultValue={editingPersonalFood?.carbohydrates ?? ""} required />
+                <Field name="proteins" label="Proteins" type="number" step="0.1" defaultValue={editingPersonalFood?.proteins ?? ""} required />
+                <Field name="fats" label="Fats" type="number" step="0.1" defaultValue={editingPersonalFood?.fats ?? ""} required />
+                <Field name="calories" label="Calories" type="number" step="0.1" defaultValue={editingPersonalFood?.calories ?? ""} required />
+              </div>
+              <div className="mt-4"><ActionMessage state={personalState} /></div>
+              <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <button type="button" onClick={closePersonalModal} className="h-10 rounded-md border border-[#d8e2d5] px-4 text-sm font-semibold hover:bg-[#f4f7f2]">Cancel</button>
+                <button className="h-10 rounded-md bg-[#245b35] px-4 text-sm font-semibold text-white">{editingPersonalFood ? "Update my item" : "Save my item"}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
+    </>
   );
 }
 

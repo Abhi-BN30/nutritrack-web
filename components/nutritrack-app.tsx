@@ -630,7 +630,7 @@ function getHeaderHighlights(tab: Tab, data: DashboardData): HeaderHighlight[] {
   const avgDailyCarbs = average(dailyNutrition.map((entry) => entry.carbs));
   const avgDailyProteins = average(dailyNutrition.map((entry) => entry.proteins));
   const avgDailyFats = average(dailyNutrition.map((entry) => entry.fats));
-  const avgDailyRatio = average(dailyNutrition.flatMap((entry) => (entry.ratioCount > 0 ? [entry.ratioTotal / entry.ratioCount] : [])));
+  const avgDailyRatio = average(dailyNutrition.flatMap((entry) => (entry.ratioCount > 0 ? [entry.proteins / entry.carbs] : [])));
   const avgFoodCalories = average(data.foodItems.map((item) => item.calories));
   const avgFoodProteins = average(data.foodItems.map((item) => item.proteins));
   const adminMetrics = data.adminMetrics;
@@ -660,10 +660,10 @@ function getHeaderHighlights(tab: Tab, data: DashboardData): HeaderHighlight[] {
       ];
     case "database":
       return [
-        { label: "Food items", value: `${data.foodItems.length}`, helper: "", icon: Database },
+        { label: " Total Items", value: `${data.foodItems.length}`, helper: "", icon: Database },
         { label: "Avg calories/100g", value: avgFoodCalories === null ? "-" : `${round(avgFoodCalories, 0)} kcal`, helper: "", icon: Apple },
         { label: "Avg proteins/100g", value: avgFoodProteins === null ? "-" : `${round(avgFoodProteins)} g`, helper: "", icon: Activity },
-        { label: "Selected role", value: data.selectedUser.role, helper: "", icon: ShieldCheck },
+        // { label: "Selected role", value: data.selectedUser.role, helper: "", icon: ShieldCheck },
       ];
     case "profile":
       return [
@@ -721,7 +721,7 @@ function Shell({ data, tab, setTab, children }: { data: DashboardData; tab: Tab;
       <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6">
         <section className="mb-5 grid gap-4 2xl:grid-cols-[1.05fr_1.25fr]">
           <div className="rounded-lg border border-[#dbe5d8] bg-white p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#4f7f5d]">Viewing</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#4f7f5d]">Logged in as</p>
             <h1 className="mt-1 text-2xl font-semibold">{data.selectedUser.name}</h1>
             {/* <p className="mt-1 break-all text-sm text-[#6a7669]">
               {activeTab.label} overview for {data.selectedUser.email}
@@ -860,8 +860,9 @@ function Tracker({ data }: { data: DashboardData }) {
                 </select>
               </label>
               
-              <Field name="dishName" label="Dish / Meal" placeholder="Free Input Field" required />
-              <Field name="quantityValue" label={quantityLabel} type="number" step={quantityStep} defaultValue={editingLog?.quantityGms ?? ""} required />
+              <Field name="dishName" label="Dish / Meal / Description" placeholder="Free Input Field" required />
+              {/* <Field name="quantityValue" label={quantityLabel} type="number" step={quantityStep} defaultValue={editingLog?.quantityGms ?? ""} required /> */}
+              <Field name="quantityValue" label="Quantity" type="number" step={quantityStep} defaultValue={editingLog?.quantityGms ?? ""} required />
               <label>
                 <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[#6a7669]">Metric</span>
                 <select name="quantityMetric" value={quantityMetric} onChange={(e) => setQuantityMetric(e.target.value as "GRAMS" | "ML" | "INTEGER")} className="h-10 w-full rounded-md border border-[#d8e2d5] bg-white px-3 text-sm">

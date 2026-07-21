@@ -1,6 +1,6 @@
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { LCHFApp, type DashboardData } from "@/components/nutritrack-app";
+import { LCHFApp, type DashboardData } from "@/components/lchf-app";
 
 export const dynamic = "force-dynamic";
 
@@ -333,5 +333,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     comparisonRows,
   };
 
-  return <NutriTrackApp data={data} />;
+  return <LCHFApp data={data} />;
 }
+
+

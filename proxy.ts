@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 export function proxy(request: NextRequest) {
-  const hasSession = request.cookies.has("nutritrack_session");
+  const hasSession = request.cookies.has("lchf_session");
   const isDashboard = request.nextUrl.pathname.startsWith("/dashboard");
 
   if (isDashboard && !hasSession) {
@@ -18,3 +18,5 @@ export function proxy(request: NextRequest) {
 export const config = {
   matcher: ["/", "/dashboard/:path*"],
 };
+
+

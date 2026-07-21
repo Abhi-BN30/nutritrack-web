@@ -1,4 +1,4 @@
-const CACHE_NAME = "nutritrack-static-v1";
+const CACHE_NAME = "LCHF-static-v1";
 const APP_SHELL = ["/", "/manifest.webmanifest", "/icon.svg"];
 
 self.addEventListener("install", (event) => {
@@ -31,3 +31,4 @@ self.addEventListener("fetch", (event) => {
       .catch(() => caches.match(event.request).then((cached) => cached ?? caches.match("/"))),
   );
 });
+

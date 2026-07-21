@@ -12,7 +12,7 @@ export type SessionUser = {
   role: SessionRole;
 };
 
-const cookieName = "nutritrack_session";
+const cookieName = "lchf_session";
 
 function getSecret() {
   const secret = process.env.AUTH_SECRET ?? "dev-only-change-this-secret-before-deploy";
@@ -70,3 +70,5 @@ export async function clearSession() {
   const store = await cookies();
   store.delete(cookieName);
 }
+
+

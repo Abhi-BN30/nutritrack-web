@@ -1,6 +1,6 @@
-# NutriTrack Web
+# LCHF Web
 
-NutriTrack is now structured as a **Next.js + Neon + Vercel** installable web app with two roles:
+LCHF is now structured as a **Next.js + Neon + Vercel** installable web app with two roles:
 
 - **Patient**: logs food intake, stores dated medical updates, exports own data, updates profile targets, signs in with email + 4 digit PIN.
 - **Admin**: can create users, view every patient, compare cross-patient metrics, manage the master food table, reset PINs, and export analytics.
@@ -65,10 +65,10 @@ AUTH_SECRET="a-long-random-secret"
 
 Optional seed values:
 ```env
-SEED_ADMIN_EMAIL="admin@nutritrack.app"
+SEED_ADMIN_EMAIL="admin@LCHF.app"
 SEED_ADMIN_PIN="1234"
 SEED_ADMIN_NAME="Primary Admin"
-SEED_PATIENT_EMAIL="patient@nutritrack.app"
+SEED_PATIENT_EMAIL="patient@LCHF.app"
 SEED_PATIENT_PIN="1234"
 SEED_PATIENT_NAME="Sample Patient"
 ```
@@ -137,7 +137,7 @@ Add these project environment variables in Vercel:
 
 - `app/page.tsx` - landing/login screen
 - `app/dashboard/page.tsx` - loads dashboard data and admin comparison metrics
-- `components/nutritrack-app.tsx` - main responsive patient/admin UI
+- `components/lchf-app.tsx` - main responsive patient/admin UI
 - `components/login-form.tsx` - email + PIN login form
 - `components/install-app-button.tsx` - browser install/PWA button
 - `lib/actions.ts` - server actions for login, users, foods, logs, records, PIN reset
@@ -156,4 +156,6 @@ Add these project environment variables in Vercel:
 - Change default seed PINs before production use.
 - Use a strong `AUTH_SECRET` in production.
 - The app is intentionally lightweight on authorization: only email + 4 digit PIN, with role-based dashboard access.
+
+
 

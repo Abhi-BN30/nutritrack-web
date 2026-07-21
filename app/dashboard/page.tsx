@@ -1,6 +1,6 @@
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { NutriTrackApp, type DashboardData } from "@/components/nutritrack-app";
+import { LCHFApp, type DashboardData } from "@/components/nutritrack-app";
 
 export const dynamic = "force-dynamic";
 

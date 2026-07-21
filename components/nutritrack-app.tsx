@@ -33,10 +33,12 @@ import {
   createUser,
   deleteFoodLog,
   deleteMedicalRecord,
+  deletePersonalFoodItem,
   saveFoodItem,
   saveFoodLog,
   saveMedicalRecord,
   saveNutritionTarget,
+  savePersonalFoodItem,
   signOut,
   updatePin,
   updateProfile,
@@ -80,6 +82,10 @@ type FoodItem = {
   calories: number;
 };
 
+type PersonalFoodItem = FoodItem & {
+  ownerEmail: string;
+};
+
 type FoodLog = {
   id: string;
   date: string;
@@ -94,6 +100,7 @@ type FoodLog = {
   calories: number;
   proteinCarbRatio: number | null;
   foodItemId: string;
+  foodChoice: string;
   foodItem: string;
 };
 
@@ -142,6 +149,7 @@ export type DashboardData = {
   selectedUser: UserSummary;
   users: UserSummary[];
   foodItems: FoodItem[];
+  personalFoodItems: PersonalFoodItem[];
   foodLogs: FoodLog[];
   medicalRecords: MedicalRecord[];
   targetProfiles: TargetProfile[];
@@ -861,13 +869,13 @@ function Tracker({ data }: { data: DashboardData }) {
             <div className="grid gap-3 sm:grid-cols-2">
               <label>
                 <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[#6a7669]">Food item</span>
-                <select name="foodItemId" defaultValue={editingLog?.foodItemId ?? ""} required className="h-10 w-full rounded-md border border-[#d8e2d5] bg-white px-3 text-sm">
+                <select name="foodChoice" defaultValue={editingLog?.foodChoice ?? ""} required className="h-10 w-full rounded-md border border-[#d8e2d5] bg-white px-3 text-sm">
                   <option value="">Select food</option>
-                  {data.foodItems.map((item) => <option key={item.id} value={item.id}>{item.itemName}</option>)}
+                  {data.foodItems.map((item) => <option key={`MASTER:${item.id}`} value={`MASTER:${item.id}`}>{item.itemName} (Master)</option>)}{data.personalFoodItems.map((item) => <option key={`PERSONAL:${item.id}`} value={`PERSONAL:${item.id}`}>{item.itemName} (My item)</option>)}
                 </select>
               </label>
               
-              <Field name="dishName" label="Dish / Meal / Description" placeholder="Free Input Field" required />
+              <Field name="dishName" label="Dish / Meal / Description" defaultValue={editingLog?.dishName ?? ""} placeholder="Free Input Field" required />
               {/* <Field name="quantityValue" label={quantityLabel} type="number" step={quantityStep} defaultValue={editingLog?.quantityValue ?? ""} required /> */}
               <Field name="quantityValue" label="Quantity" type="number" step={quantityStep} defaultValue={editingLog?.quantityValue ?? ""} required />
               <label>
@@ -935,7 +943,7 @@ function Tracker({ data }: { data: DashboardData }) {
                 </div>
                 <div className="mt-3 grid grid-cols-2 gap-3 text-sm text-[#4d5b4c]">
                   <p><span className="font-medium text-[#172117]">Food:</span> {log.foodItem}</p>
-                  <p><span className="font-medium text-[#172117]">Qty:</span> {round(log.quantityGms, 0)} g eq.</p>
+                  <p><span className="font-medium text-[#172117]">Qty:</span> {formatQuantityDisplay(log.quantityValue, log.quantityMetric)}</p>
                   <p><span className="font-medium text-[#172117]">Carbs:</span> {round(log.carbs)}g</p>
                   <p><span className="font-medium text-[#172117]">Proteins:</span> {round(log.proteins)}g</p>
                   <p><span className="font-medium text-[#172117]">Fats:</span> {round(log.fats)}g</p>
@@ -1328,11 +1336,18 @@ function Graphs({ data }: { data: DashboardData }) {
   );
 }
 function DatabaseTab({ data }: { data: DashboardData }) {
-  const [state, action] = useActionState(saveFoodItem, initialState);
+  const [masterState, masterAction] = useActionState(saveFoodItem, initialState);
+  const [personalState, personalAction] = useActionState(savePersonalFoodItem, initialState);
+  const [editingMasterFood, setEditingMasterFood] = useState<FoodItem | null>(null);
+  const [editingPersonalFood, setEditingPersonalFood] = useState<PersonalFoodItem | null>(null);
   const [foodSearch, setFoodSearch] = useState("");
   const [foodFilter, setFoodFilter] = useState<"all" | "highProtein" | "highCalories" | "lowCarb">("all");
   const [foodSort, setFoodSort] = useState<"name_asc" | "name_desc" | "calories_desc" | "proteins_desc" | "carbs_asc">("name_asc");
-  const canEdit = data.currentUser.role === "ADMIN";
+  const [personalSearch, setPersonalSearch] = useState("");
+  const [personalFilter, setPersonalFilter] = useState<"all" | "highProtein" | "highCalories" | "lowCarb">("all");
+  const [personalSort, setPersonalSort] = useState<"name_asc" | "name_desc" | "calories_desc" | "proteins_desc" | "carbs_asc">("name_asc");
+  const canEditMaster = data.currentUser.role === "ADMIN";
+  const canManagePersonal = data.currentUser.role === "USER";
 
   const filteredFoodItems = useMemo(() => {
     const keyword = foodSearch.trim().toLowerCase();
@@ -1367,64 +1382,173 @@ function DatabaseTab({ data }: { data: DashboardData }) {
     });
   }, [data.foodItems, foodFilter, foodSearch, foodSort]);
 
+  const filteredPersonalFoodItems = useMemo(() => {
+    const keyword = personalSearch.trim().toLowerCase();
+    const filtered = data.personalFoodItems.filter((item) => {
+      const matchesSearch = !keyword || item.itemName.toLowerCase().includes(keyword) || item.ownerEmail.toLowerCase().includes(keyword);
+      const matchesFilter =
+        personalFilter === "all"
+          ? true
+          : personalFilter === "highProtein"
+            ? item.proteins >= 15
+            : personalFilter === "highCalories"
+              ? item.calories >= 250
+              : item.carbohydrates <= 10;
+
+      return matchesSearch && matchesFilter;
+    });
+
+    return [...filtered].sort((a, b) => {
+      switch (personalSort) {
+        case "name_desc":
+          return b.itemName.localeCompare(a.itemName);
+        case "calories_desc":
+          return b.calories - a.calories;
+        case "proteins_desc":
+          return b.proteins - a.proteins;
+        case "carbs_asc":
+          return a.carbohydrates - b.carbohydrates;
+        case "name_asc":
+        default:
+          return a.itemName.localeCompare(b.itemName);
+      }
+    });
+  }, [data.personalFoodItems, personalFilter, personalSearch, personalSort]);
+
   return (
     <div className="grid gap-5 xl:grid-cols-[0.82fr_1.18fr]">
-      {canEdit ? (
-        <form action={action} className="rounded-lg border border-[#dbe5d8] bg-white p-4">
-          <h2 className="font-semibold">Master food table</h2>
-          <p className="mt-1 text-sm text-[#6a7669]">Nutrition values are stored per 100 grams.</p>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <Field name="itemName" label="Item name" required />
-            <Field name="carbohydrates" label="Carbohydrates" type="number" step="0.1" required />
-            <Field name="proteins" label="Proteins" type="number" step="0.1" required />
-            <Field name="fats" label="Fats" type="number" step="0.1" required />
-            <Field name="calories" label="Calories" type="number" step="0.1" required />
+      <section className="space-y-5">
+        {canEditMaster ? (
+          <form key={editingMasterFood?.id ?? "new-master-food"} action={masterAction} className="rounded-lg border border-[#dbe5d8] bg-white p-4">
+            <input type="hidden" name="id" value={editingMasterFood?.id ?? ""} />
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="font-semibold">Master food table</h2>
+                <p className="mt-1 text-sm text-[#6a7669]">Only admins can maintain the shared master nutrition list.</p>
+              </div>
+              {editingMasterFood ? <button type="button" onClick={() => setEditingMasterFood(null)} className="rounded-md border border-[#d8e2d5] px-3 py-2 text-sm font-medium hover:bg-[#f4f7f2]">Cancel edit</button> : null}
+            </div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <Field name="itemName" label="Item name" defaultValue={editingMasterFood?.itemName ?? ""} required />
+              <Field name="carbohydrates" label="Carbohydrates" type="number" step="0.1" defaultValue={editingMasterFood?.carbohydrates ?? ""} required />
+              <Field name="proteins" label="Proteins" type="number" step="0.1" defaultValue={editingMasterFood?.proteins ?? ""} required />
+              <Field name="fats" label="Fats" type="number" step="0.1" defaultValue={editingMasterFood?.fats ?? ""} required />
+              <Field name="calories" label="Calories" type="number" step="0.1" defaultValue={editingMasterFood?.calories ?? ""} required />
+            </div>
+            <div className="mt-4"><ActionMessage state={masterState} /></div>
+            <button className="mt-4 h-10 rounded-md bg-[#245b35] px-4 text-sm font-semibold text-white">{editingMasterFood ? "Update master item" : "Save master item"}</button>
+          </form>
+        ) : null}
+
+        {canManagePersonal ? (
+          <form key={editingPersonalFood?.id ?? "new-personal-food"} action={personalAction} className="rounded-lg border border-[#dbe5d8] bg-white p-4">
+            <input type="hidden" name="id" value={editingPersonalFood?.id ?? ""} />
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="font-semibold">My personal food items</h2>
+                <p className="mt-1 text-sm text-[#6a7669]">These are private to your account and do not modify the master food database.</p>
+              </div>
+              {editingPersonalFood ? <button type="button" onClick={() => setEditingPersonalFood(null)} className="rounded-md border border-[#d8e2d5] px-3 py-2 text-sm font-medium hover:bg-[#f4f7f2]">Cancel edit</button> : null}
+            </div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <Field name="itemName" label="Item name" defaultValue={editingPersonalFood?.itemName ?? ""} required />
+              <Field name="carbohydrates" label="Carbohydrates" type="number" step="0.1" defaultValue={editingPersonalFood?.carbohydrates ?? ""} required />
+              <Field name="proteins" label="Proteins" type="number" step="0.1" defaultValue={editingPersonalFood?.proteins ?? ""} required />
+              <Field name="fats" label="Fats" type="number" step="0.1" defaultValue={editingPersonalFood?.fats ?? ""} required />
+              <Field name="calories" label="Calories" type="number" step="0.1" defaultValue={editingPersonalFood?.calories ?? ""} required />
+            </div>
+            <div className="mt-4"><ActionMessage state={personalState} /></div>
+            <button className="mt-4 h-10 rounded-md bg-[#245b35] px-4 text-sm font-semibold text-white">{editingPersonalFood ? "Update my item" : "Save my item"}</button>
+          </form>
+        ) : null}
+      </section>
+
+      <section className="min-w-0 space-y-5">
+        <section className="min-w-0 rounded-lg border border-[#dbe5d8] bg-white">
+          <div className="flex items-center justify-between border-b border-[#e4ece1] p-4">
+            <div>
+              <h2 className="font-semibold">Master food items</h2>
+              <p className="text-sm text-[#6a7669]">Shared list visible to all users.</p>
+            </div>
+            <button onClick={() => downloadCsv("nutritrack-food-master.csv", [["Item", "Carbohydrates", "Proteins", "Fats", "Calories"], ...filteredFoodItems.map((item) => [item.itemName, item.carbohydrates, item.proteins, item.fats, item.calories])])} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]"><Download className="size-4" /></button>
           </div>
-          <div className="mt-4"><ActionMessage state={state} /></div>
-          <div className="mt-4 flex flex-wrap gap-2">
-            <button className="h-10 rounded-md bg-[#245b35] px-4 text-sm font-semibold text-white">Save item</button>
-            {/* <button formAction={seedMasterFoods} className="h-10 rounded-md border border-[#d8e2d5] px-4 text-sm font-semibold hover:bg-[#f4f7f2]">Seed defaults</button> */}
+          <div className="px-4 pb-4">
+            <TableControls
+              searchValue={foodSearch}
+              onSearchChange={setFoodSearch}
+              searchPlaceholder="Search master food item"
+              filterValue={foodFilter}
+              onFilterChange={(value) => setFoodFilter(value as "all" | "highProtein" | "highCalories" | "lowCarb")}
+              filterOptions={[
+                { value: "all", label: "All foods" },
+                { value: "highProtein", label: "High protein" },
+                { value: "highCalories", label: "High calorie" },
+                { value: "lowCarb", label: "Low carb" },
+              ]}
+              sortValue={foodSort}
+              onSortChange={(value) => setFoodSort(value as "name_asc" | "name_desc" | "calories_desc" | "proteins_desc" | "carbs_asc")}
+              sortOptions={[
+                { value: "name_asc", label: "Name A to Z" },
+                { value: "name_desc", label: "Name Z to A" },
+                { value: "calories_desc", label: "Calories high to low" },
+                { value: "proteins_desc", label: "Proteins high to low" },
+                { value: "carbs_asc", label: "Carbs low to high" },
+              ]}
+            />
           </div>
-        </form>
-      ) : null}
-      <section className="min-w-0 rounded-lg border border-[#dbe5d8] bg-white">
-        <div className="flex items-center justify-between border-b border-[#e4ece1] p-4">
-          <div><h2 className="font-semibold">Food database</h2></div>
-          <button onClick={() => downloadCsv("nutritrack-food-master.csv", [["Item", "Carbohydrates", "Proteins", "Fats", "Calories"], ...filteredFoodItems.map((item) => [item.itemName, item.carbohydrates, item.proteins, item.fats, item.calories])])} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]"><Download className="size-4" /></button>
-        </div>
-        <div className="px-4 pb-4">
-          <TableControls
-            searchValue={foodSearch}
-            onSearchChange={setFoodSearch}
-            searchPlaceholder="Search food item"
-            filterValue={foodFilter}
-            onFilterChange={(value) => setFoodFilter(value as "all" | "highProtein" | "highCalories" | "lowCarb")}
-            filterOptions={[
-              { value: "all", label: "All foods" },
-              { value: "highProtein", label: "High protein" },
-              { value: "highCalories", label: "High calorie" },
-              { value: "lowCarb", label: "Low carb" },
-            ]}
-            sortValue={foodSort}
-            onSortChange={(value) => setFoodSort(value as "name_asc" | "name_desc" | "calories_desc" | "proteins_desc" | "carbs_asc")}
-            sortOptions={[
-              { value: "name_asc", label: "Name A to Z" },
-              { value: "name_desc", label: "Name Z to A" },
-              { value: "calories_desc", label: "Calories high to low" },
-              { value: "proteins_desc", label: "Proteins high to low" },
-              { value: "carbs_asc", label: "Carbs low to high" },
-            ]}
-          />
-        </div>
-        <div className="space-y-3 px-4 pb-4 lg:hidden">
-          {filteredFoodItems.length === 0 ? <p className="rounded-lg border border-dashed border-[#d8e2d5] bg-[#f9fbf8] p-4 text-center text-sm text-[#6a7669]">No food items found.</p> : filteredFoodItems.map((item) => <article key={item.id} className="rounded-lg border border-[#e4ece1] bg-[#f9fbf8] p-4"><p className="font-medium text-[#172117]">{item.itemName}</p><div className="mt-3 grid grid-cols-2 gap-3 text-sm text-[#4d5b4c]"><p><span className="font-medium text-[#172117]">Carbs:</span> {round(item.carbohydrates)}g</p><p><span className="font-medium text-[#172117]">Proteins:</span> {round(item.proteins)}g</p><p><span className="font-medium text-[#172117]">Fats:</span> {round(item.fats)}g</p><p><span className="font-medium text-[#172117]">Calories:</span> {round(item.calories, 0)}</p></div></article>)}
-        </div>
-        <div className="hidden overflow-x-auto lg:block">
-          <table className="w-full min-w-[620px] text-sm">
-            <thead className="bg-[#f4f8f2] text-left"><tr><th className="p-3">Item</th><th className="p-3">Carbs</th><th className="p-3">Proteins</th><th className="p-3">Fats</th><th className="p-3">Calories</th></tr></thead>
-            <tbody>{filteredFoodItems.length === 0 ? <tr><td colSpan={5} className="p-4 text-center text-[#6a7669]">No food items found.</td></tr> : filteredFoodItems.map((item) => <tr key={item.id} className="border-t border-[#eef3ec]"><td className="p-3 font-medium">{item.itemName}</td><td className="p-3">{round(item.carbohydrates)}g</td><td className="p-3">{round(item.proteins)}g</td><td className="p-3">{round(item.fats)}g</td><td className="p-3">{round(item.calories, 0)}</td></tr>)}</tbody>
-          </table>
-        </div>
+          <div className="space-y-3 px-4 pb-4 lg:hidden">
+            {filteredFoodItems.length === 0 ? <p className="rounded-lg border border-dashed border-[#d8e2d5] bg-[#f9fbf8] p-4 text-center text-sm text-[#6a7669]">No master food items found.</p> : filteredFoodItems.map((item) => <article key={item.id} className="rounded-lg border border-[#e4ece1] bg-[#f9fbf8] p-4"><div className="flex items-start justify-between gap-3"><p className="font-medium text-[#172117]">{item.itemName}</p>{canEditMaster ? <button type="button" onClick={() => setEditingMasterFood(item)} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]"><Pencil className="size-4" /></button> : null}</div><div className="mt-3 grid grid-cols-2 gap-3 text-sm text-[#4d5b4c]"><p><span className="font-medium text-[#172117]">Carbs:</span> {round(item.carbohydrates)}g</p><p><span className="font-medium text-[#172117]">Proteins:</span> {round(item.proteins)}g</p><p><span className="font-medium text-[#172117]">Fats:</span> {round(item.fats)}g</p><p><span className="font-medium text-[#172117]">Calories:</span> {round(item.calories, 0)}</p></div></article>)}
+          </div>
+          <div className="hidden overflow-x-auto lg:block">
+            <table className="w-full min-w-[760px] text-sm">
+              <thead className="bg-[#f4f8f2] text-left"><tr><th className="p-3">Item</th><th className="p-3">Carbs</th><th className="p-3">Proteins</th><th className="p-3">Fats</th><th className="p-3">Calories</th>{canEditMaster ? <th className="p-3">Actions</th> : null}</tr></thead>
+              <tbody>{filteredFoodItems.length === 0 ? <tr><td colSpan={canEditMaster ? 6 : 5} className="p-4 text-center text-[#6a7669]">No master food items found.</td></tr> : filteredFoodItems.map((item) => <tr key={item.id} className="border-t border-[#eef3ec]"><td className="p-3 font-medium">{item.itemName}</td><td className="p-3">{round(item.carbohydrates)}g</td><td className="p-3">{round(item.proteins)}g</td><td className="p-3">{round(item.fats)}g</td><td className="p-3">{round(item.calories, 0)}</td>{canEditMaster ? <td className="p-3"><button type="button" onClick={() => setEditingMasterFood(item)} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]"><Pencil className="size-4" /></button></td> : null}</tr>)}</tbody>
+            </table>
+          </div>
+        </section>
+
+        <section className="min-w-0 rounded-lg border border-[#dbe5d8] bg-white">
+          <div className="flex items-center justify-between border-b border-[#e4ece1] p-4">
+            <div>
+              <h2 className="font-semibold">Personal food items</h2>
+              <p className="text-sm text-[#6a7669]">Private food items for {data.selectedUser.email}.</p>
+            </div>
+            <button onClick={() => downloadCsv("nutritrack-personal-food-items.csv", [["Item", "Owner Email", "Carbohydrates", "Proteins", "Fats", "Calories"], ...filteredPersonalFoodItems.map((item) => [item.itemName, item.ownerEmail, item.carbohydrates, item.proteins, item.fats, item.calories])])} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]"><Download className="size-4" /></button>
+          </div>
+          <div className="px-4 pb-4">
+            <TableControls
+              searchValue={personalSearch}
+              onSearchChange={setPersonalSearch}
+              searchPlaceholder="Search personal food item"
+              filterValue={personalFilter}
+              onFilterChange={(value) => setPersonalFilter(value as "all" | "highProtein" | "highCalories" | "lowCarb")}
+              filterOptions={[
+                { value: "all", label: "All foods" },
+                { value: "highProtein", label: "High protein" },
+                { value: "highCalories", label: "High calorie" },
+                { value: "lowCarb", label: "Low carb" },
+              ]}
+              sortValue={personalSort}
+              onSortChange={(value) => setPersonalSort(value as "name_asc" | "name_desc" | "calories_desc" | "proteins_desc" | "carbs_asc")}
+              sortOptions={[
+                { value: "name_asc", label: "Name A to Z" },
+                { value: "name_desc", label: "Name Z to A" },
+                { value: "calories_desc", label: "Calories high to low" },
+                { value: "proteins_desc", label: "Proteins high to low" },
+                { value: "carbs_asc", label: "Carbs low to high" },
+              ]}
+            />
+          </div>
+          <div className="space-y-3 px-4 pb-4 lg:hidden">
+            {filteredPersonalFoodItems.length === 0 ? <p className="rounded-lg border border-dashed border-[#d8e2d5] bg-[#f9fbf8] p-4 text-center text-sm text-[#6a7669]">No personal food items found.</p> : filteredPersonalFoodItems.map((item) => <article key={item.id} className="rounded-lg border border-[#e4ece1] bg-[#f9fbf8] p-4"><div className="flex items-start justify-between gap-3"><div><p className="font-medium text-[#172117]">{item.itemName}</p><p className="text-sm text-[#6a7669]">{item.ownerEmail}</p></div>{canManagePersonal ? <div className="flex gap-2"><button type="button" onClick={() => setEditingPersonalFood(item)} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]"><Pencil className="size-4" /></button><form action={deletePersonalFoodItem}><input type="hidden" name="id" value={item.id} /><button className="rounded-md border border-[#ead0cb] p-2 text-[#a13f32] hover:bg-[#fff4f2]"><Trash2 className="size-4" /></button></form></div> : null}</div><div className="mt-3 grid grid-cols-2 gap-3 text-sm text-[#4d5b4c]"><p><span className="font-medium text-[#172117]">Carbs:</span> {round(item.carbohydrates)}g</p><p><span className="font-medium text-[#172117]">Proteins:</span> {round(item.proteins)}g</p><p><span className="font-medium text-[#172117]">Fats:</span> {round(item.fats)}g</p><p><span className="font-medium text-[#172117]">Calories:</span> {round(item.calories, 0)}</p></div></article>)}
+          </div>
+          <div className="hidden overflow-x-auto lg:block">
+            <table className="w-full min-w-[760px] text-sm">
+              <thead className="bg-[#f4f8f2] text-left"><tr><th className="p-3">Item</th><th className="p-3">Owner Email</th><th className="p-3">Carbs</th><th className="p-3">Proteins</th><th className="p-3">Fats</th><th className="p-3">Calories</th>{canManagePersonal ? <th className="p-3">Actions</th> : null}</tr></thead>
+              <tbody>{filteredPersonalFoodItems.length === 0 ? <tr><td colSpan={canManagePersonal ? 7 : 6} className="p-4 text-center text-[#6a7669]">No personal food items found.</td></tr> : filteredPersonalFoodItems.map((item) => <tr key={item.id} className="border-t border-[#eef3ec]"><td className="p-3 font-medium">{item.itemName}</td><td className="p-3">{item.ownerEmail}</td><td className="p-3">{round(item.carbohydrates)}g</td><td className="p-3">{round(item.proteins)}g</td><td className="p-3">{round(item.fats)}g</td><td className="p-3">{round(item.calories, 0)}</td>{canManagePersonal ? <td className="p-3"><div className="flex gap-2"><button type="button" onClick={() => setEditingPersonalFood(item)} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]"><Pencil className="size-4" /></button><form action={deletePersonalFoodItem}><input type="hidden" name="id" value={item.id} /><button className="rounded-md border border-[#ead0cb] p-2 text-[#a13f32] hover:bg-[#fff4f2]"><Trash2 className="size-4" /></button></form></div></td> : null}</tr>)}</tbody>
+            </table>
+          </div>
+        </section>
       </section>
     </div>
   );

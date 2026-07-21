@@ -28,6 +28,7 @@ model User {
   foodLogs         FoodLog[]
   medicalRecords   MedicalRecord[]
   nutritionTargets NutritionTarget[]
+  personalFoodItems PersonalFoodItem[]
 
   @@map("users")
 }
@@ -62,6 +63,26 @@ model FoodItem {
   @@map("food_items")
 }
 
+model PersonalFoodItem {
+  id            String    @id @default(cuid())
+  userId        String
+  ownerEmail    String
+  itemName      String
+  carbohydrates Float
+  proteins      Float
+  fats          Float
+  calories      Float
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  foodLogs      FoodLog[]
+
+  @@unique([userId, itemName])
+  @@index([userId])
+  @@index([ownerEmail])
+  @@map("personal_food_items")
+}
+
 model MedicalRecord {
   id        String   @id @default(cuid())
   userId    String
@@ -79,25 +100,28 @@ model MedicalRecord {
 }
 
 model FoodLog {
-  id               String   @id @default(cuid())
-  userId           String
-  foodItemId       String
-  date             DateTime @default(now())
-  dishName         String
-  quantityValue    Float
-  quantityMetric   String   @default("GRAMS")
-  quantityGms      Float
-  carbs            Float
-  proteins         Float
-  fats             Float
-  calories         Float
-  proteinCarbRatio Float?
-  createdAt        DateTime @default(now())
-  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  foodItem         FoodItem @relation(fields: [foodItemId], references: [id], onDelete: Restrict)
+  id                 String            @id @default(cuid())
+  userId             String
+  foodItemId         String?
+  personalFoodItemId String?
+  date               DateTime          @default(now())
+  dishName           String
+  quantityValue      Float
+  quantityMetric     String            @default("GRAMS")
+  quantityGms        Float
+  carbs              Float
+  proteins           Float
+  fats               Float
+  calories           Float
+  proteinCarbRatio   Float?
+  createdAt          DateTime          @default(now())
+  user               User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  foodItem           FoodItem?         @relation(fields: [foodItemId], references: [id], onDelete: Restrict)
+  personalFoodItem   PersonalFoodItem? @relation(fields: [personalFoodItemId], references: [id], onDelete: Restrict)
 
   @@index([userId, date])
   @@index([foodItemId])
+  @@index([personalFoodItemId])
   @@map("food_logs")
 }
 

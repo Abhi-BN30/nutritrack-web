@@ -100,3 +100,65 @@ WHERE "quantityValue" IS NULL OR "quantityMetric" IS NULL;
 ALTER TABLE food_logs ALTER COLUMN "quantityValue" SET NOT NULL;
 ALTER TABLE food_logs ALTER COLUMN "quantityMetric" SET NOT NULL;
 ALTER TABLE food_logs ALTER COLUMN "quantityMetric" SET DEFAULT 'GRAMS';
+
+
+-- 8) Create a separate personal food table for user-owned items.
+-- This keeps the master food_items table clean while allowing each user to
+-- maintain their own private nutrition entries.
+CREATE TABLE IF NOT EXISTS personal_food_items (
+  id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  "userId" TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  "ownerEmail" TEXT NOT NULL,
+  "itemName" TEXT NOT NULL,
+  carbohydrates DOUBLE PRECISION NOT NULL,
+  proteins DOUBLE PRECISION NOT NULL,
+  fats DOUBLE PRECISION NOT NULL,
+  calories DOUBLE PRECISION NOT NULL,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS personal_food_items_user_item_key
+  ON personal_food_items ("userId", "itemName");
+
+CREATE INDEX IF NOT EXISTS personal_food_items_user_idx
+  ON personal_food_items ("userId");
+
+CREATE INDEX IF NOT EXISTS personal_food_items_owner_email_idx
+  ON personal_food_items ("ownerEmail");
+
+-- Optional one-time sync in case existing users already changed email values and
+-- you later import rows manually into personal_food_items.
+UPDATE personal_food_items pfi
+SET "ownerEmail" = u.email
+FROM users u
+WHERE pfi."userId" = u.id
+  AND pfi."ownerEmail" IS DISTINCT FROM u.email;
+
+-- 9) Allow food logs to point either to the master food table OR the new
+-- personal_food_items table.
+ALTER TABLE food_logs ADD COLUMN IF NOT EXISTS "personalFoodItemId" TEXT;
+
+ALTER TABLE food_logs ALTER COLUMN "foodItemId" DROP NOT NULL;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'food_logs_personalFoodItemId_fkey'
+  ) THEN
+    ALTER TABLE food_logs
+      ADD CONSTRAINT "food_logs_personalFoodItemId_fkey"
+      FOREIGN KEY ("personalFoodItemId")
+      REFERENCES personal_food_items(id)
+      ON DELETE RESTRICT
+      ON UPDATE CASCADE;
+  END IF;
+END $$;
+
+CREATE INDEX IF NOT EXISTS food_logs_personal_food_item_idx
+  ON food_logs ("personalFoodItemId");
+
+-- Existing rows stay valid automatically because they already reference
+-- food_items through foodItemId and personalFoodItemId will remain NULL.

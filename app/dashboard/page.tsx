@@ -69,7 +69,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
   const targetUserId = isAdmin && params.userId ? params.userId : currentUser.id;
 
-  const [selectedUserDb, foodItems, foodLogs, medicalRecords, targetProfiles, trackedDayGroups, allFoodLogs, allMedicalRecords] =
+  const [selectedUserDb, foodItems, personalFoodItems, foodLogs, medicalRecords, targetProfiles, trackedDayGroups, allFoodLogs, allMedicalRecords] =
     await Promise.all([
       prisma.user.findUnique({
         where: { id: targetUserId },
@@ -103,9 +103,13 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         },
       }),
       prisma.foodItem.findMany({ orderBy: { itemName: "asc" } }),
+      prisma.personalFoodItem.findMany({
+        where: { userId: targetUserId },
+        orderBy: { itemName: "asc" },
+      }),
       prisma.foodLog.findMany({
         where: { userId: targetUserId },
-        include: { foodItem: true },
+        include: { foodItem: true, personalFoodItem: true },
         orderBy: [{ date: "desc" }, { createdAt: "desc" }],
       }),
       prisma.medicalRecord.findMany({
@@ -265,6 +269,15 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       fats: item.fats,
       calories: item.calories,
     })),
+    personalFoodItems: personalFoodItems.map((item) => ({
+      id: item.id,
+      itemName: item.itemName,
+      carbohydrates: item.carbohydrates,
+      proteins: item.proteins,
+      fats: item.fats,
+      calories: item.calories,
+      ownerEmail: item.ownerEmail,
+    })),
     foodLogs: foodLogs.map((log) => ({
       id: log.id,
       date: isoDate(log.date),
@@ -278,8 +291,9 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       fats: log.fats,
       calories: log.calories,
       proteinCarbRatio: log.proteinCarbRatio,
-      foodItemId: log.foodItemId,
-      foodItem: log.foodItem.itemName,
+      foodItemId: log.foodItemId ?? log.personalFoodItemId ?? "",
+      foodChoice: log.foodItemId ? `MASTER:${log.foodItemId}` : `PERSONAL:${log.personalFoodItemId ?? ""}`,
+      foodItem: log.foodItem?.itemName ?? log.personalFoodItem?.itemName ?? "Unknown item",
     })),
     medicalRecords: medicalRecords.map((record) => ({
       id: record.id,

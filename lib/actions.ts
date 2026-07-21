@@ -13,6 +13,7 @@ import {
   loginSchema,
   medicalRecordSchema,
   nutritionTargetSchema,
+  personalFoodItemSchema,
   pinUpdateSchema,
   profileSchema,
   userSchema,
@@ -59,6 +60,16 @@ function convertQuantityToGrams(quantityValue: number, quantityMetric: "GRAMS" |
   }
 
   return quantityValue;
+}
+
+function parseFoodChoice(foodChoice: string) {
+  const [source, id] = foodChoice.split(":");
+
+  if ((source !== "MASTER" && source !== "PERSONAL") || !id) {
+    return null;
+  }
+
+  return { source, id } as const;
 }
 
 function actionError(error: unknown, fallback: string): ActionState {
@@ -208,12 +219,21 @@ export async function updateProfile(_state: ActionState, formData: FormData): Pr
   }
 
   try {
-    await prisma.user.update({
-      where: { id: targetUserId },
-      data: {
-        ...parsed.data,
-        startDate: startOfDay(parsed.data.startDate),
-      },
+    await prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: targetUserId },
+        data: {
+          ...parsed.data,
+          startDate: startOfDay(parsed.data.startDate),
+        },
+      });
+
+      await tx.personalFoodItem.updateMany({
+        where: { userId: targetUserId },
+        data: {
+          ownerEmail: parsed.data.email,
+        },
+      });
     });
   } catch (error) {
     return actionError(error, "Unable to save the profile right now.");
@@ -310,6 +330,7 @@ export async function saveFoodItem(_state: ActionState, formData: FormData): Pro
   }
 
   const parsed = foodItemSchema.safeParse({
+    id: formValue(formData, "id") || undefined,
     itemName: formValue(formData, "itemName"),
     carbohydrates: formValue(formData, "carbohydrates"),
     proteins: formValue(formData, "proteins"),
@@ -322,10 +343,30 @@ export async function saveFoodItem(_state: ActionState, formData: FormData): Pro
   }
 
   try {
-    await prisma.foodItem.upsert({
-      where: { itemName: parsed.data.itemName },
-      create: parsed.data,
-      update: parsed.data,
+    if (parsed.data.id) {
+      await prisma.foodItem.update({
+        where: { id: parsed.data.id },
+        data: {
+          itemName: parsed.data.itemName,
+          carbohydrates: parsed.data.carbohydrates,
+          proteins: parsed.data.proteins,
+          fats: parsed.data.fats,
+          calories: parsed.data.calories,
+        },
+      });
+
+      revalidatePath("/dashboard");
+      return { ok: true, message: "Food item updated." };
+    }
+
+    await prisma.foodItem.create({
+      data: {
+        itemName: parsed.data.itemName,
+        carbohydrates: parsed.data.carbohydrates,
+        proteins: parsed.data.proteins,
+        fats: parsed.data.fats,
+        calories: parsed.data.calories,
+      },
     });
   } catch (error) {
     return actionError(error, "Unable to save the food item right now.");
@@ -333,6 +374,86 @@ export async function saveFoodItem(_state: ActionState, formData: FormData): Pro
 
   revalidatePath("/dashboard");
   return { ok: true, message: "Food item saved." };
+}
+
+export async function savePersonalFoodItem(_state: ActionState, formData: FormData): Promise<ActionState> {
+  const actor = await requireUser();
+
+  if (actor.role !== "USER") {
+    return { message: "Only users can maintain personal food items." };
+  }
+
+  const parsed = personalFoodItemSchema.safeParse({
+    id: formValue(formData, "id") || undefined,
+    userId: actor.id,
+    itemName: formValue(formData, "itemName"),
+    carbohydrates: formValue(formData, "carbohydrates"),
+    proteins: formValue(formData, "proteins"),
+    fats: formValue(formData, "fats"),
+    calories: formValue(formData, "calories"),
+  });
+
+  if (!parsed.success) {
+    return { message: "Check personal food item values." };
+  }
+
+  try {
+    if (parsed.data.id) {
+      const existing = await prisma.personalFoodItem.findUnique({ where: { id: parsed.data.id } });
+      if (!existing || existing.userId !== actor.id) {
+        return { message: "You cannot edit this personal food item." };
+      }
+
+      await prisma.personalFoodItem.update({
+        where: { id: parsed.data.id },
+        data: {
+          itemName: parsed.data.itemName,
+          ownerEmail: actor.email,
+          carbohydrates: parsed.data.carbohydrates,
+          proteins: parsed.data.proteins,
+          fats: parsed.data.fats,
+          calories: parsed.data.calories,
+        },
+      });
+
+      revalidatePath("/dashboard");
+      return { ok: true, message: "Personal food item updated." };
+    }
+
+    await prisma.personalFoodItem.create({
+      data: {
+        userId: actor.id,
+        ownerEmail: actor.email,
+        itemName: parsed.data.itemName,
+        carbohydrates: parsed.data.carbohydrates,
+        proteins: parsed.data.proteins,
+        fats: parsed.data.fats,
+        calories: parsed.data.calories,
+      },
+    });
+  } catch (error) {
+    return actionError(error, "Unable to save the personal food item right now.");
+  }
+
+  revalidatePath("/dashboard");
+  return { ok: true, message: "Personal food item saved." };
+}
+
+export async function deletePersonalFoodItem(formData: FormData) {
+  const actor = await requireUser();
+
+  if (actor.role !== "USER") {
+    return;
+  }
+
+  const id = formValue(formData, "id");
+  const item = await prisma.personalFoodItem.findUnique({ where: { id } });
+  if (!item || item.userId !== actor.id) {
+    return;
+  }
+
+  await prisma.personalFoodItem.delete({ where: { id } });
+  revalidatePath("/dashboard");
 }
 
 export async function seedMasterFoods(): Promise<ActionState> {
@@ -446,7 +567,7 @@ export async function saveFoodLog(_state: ActionState, formData: FormData): Prom
   const parsed = foodLogSchema.safeParse({
     id: formValue(formData, "id") || undefined,
     userId,
-    foodItemId: formValue(formData, "foodItemId"),
+    foodChoice: formValue(formData, "foodChoice"),
     date: formValue(formData, "date"),
     dishName: formValue(formData, "dishName") || "Meal",
     quantityValue: formValue(formData, "quantityValue"),
@@ -457,18 +578,54 @@ export async function saveFoodLog(_state: ActionState, formData: FormData): Prom
     return { message: "Check food log details." };
   }
 
-  const food = await prisma.foodItem.findUnique({ where: { id: parsed.data.foodItemId } });
+  const parsedFoodChoice = parseFoodChoice(parsed.data.foodChoice);
+  if (!parsedFoodChoice) {
+    return { message: "Select a valid food item." };
+  }
 
-  if (!food) {
+  let nutrientsSource:
+    | { id: string; carbohydrates: number; proteins: number; fats: number; calories: number; source: "MASTER" | "PERSONAL" }
+    | null = null;
+
+  if (parsedFoodChoice.source === "MASTER") {
+    const food = await prisma.foodItem.findUnique({ where: { id: parsedFoodChoice.id } });
+    if (food) {
+      nutrientsSource = {
+        id: food.id,
+        carbohydrates: food.carbohydrates,
+        proteins: food.proteins,
+        fats: food.fats,
+        calories: food.calories,
+        source: "MASTER",
+      };
+    }
+  } else {
+    const personalFood = await prisma.personalFoodItem.findUnique({ where: { id: parsedFoodChoice.id } });
+    const canUsePersonalFood =
+      personalFood && (actor.role === "ADMIN" ? personalFood.userId === userId : personalFood.userId === actor.id);
+
+    if (canUsePersonalFood && personalFood) {
+      nutrientsSource = {
+        id: personalFood.id,
+        carbohydrates: personalFood.carbohydrates,
+        proteins: personalFood.proteins,
+        fats: personalFood.fats,
+        calories: personalFood.calories,
+        source: "PERSONAL",
+      };
+    }
+  }
+
+  if (!nutrientsSource) {
     return { message: "Selected food item was not found." };
   }
 
   const quantityGms = convertQuantityToGrams(parsed.data.quantityValue, parsed.data.quantityMetric);
   const scale = quantityGms / 100;
-  const proteins = food.proteins * scale;
-  const carbs = food.carbohydrates * scale;
-  const fats = food.fats * scale;
-  const calories = food.calories * scale;
+  const proteins = nutrientsSource.proteins * scale;
+  const carbs = nutrientsSource.carbohydrates * scale;
+  const fats = nutrientsSource.fats * scale;
+  const calories = nutrientsSource.calories * scale;
   const proteinCarbRatio = calculateProteinCarbRatio(proteins, carbs);
 
   try {
@@ -482,7 +639,8 @@ export async function saveFoodLog(_state: ActionState, formData: FormData): Prom
         where: { id: parsed.data.id },
         data: {
           userId,
-          foodItemId: food.id,
+          foodItemId: nutrientsSource.source === "MASTER" ? nutrientsSource.id : null,
+          personalFoodItemId: nutrientsSource.source === "PERSONAL" ? nutrientsSource.id : null,
           date: startOfDay(parsed.data.date),
           dishName: parsed.data.dishName,
           quantityValue: parsed.data.quantityValue,
@@ -503,7 +661,8 @@ export async function saveFoodLog(_state: ActionState, formData: FormData): Prom
     await prisma.foodLog.create({
       data: {
         userId,
-        foodItemId: food.id,
+        foodItemId: nutrientsSource.source === "MASTER" ? nutrientsSource.id : null,
+        personalFoodItemId: nutrientsSource.source === "PERSONAL" ? nutrientsSource.id : null,
         date: startOfDay(parsed.data.date),
         dishName: parsed.data.dishName,
         quantityValue: parsed.data.quantityValue,

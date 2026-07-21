@@ -66,6 +66,17 @@ export const pinUpdateSchema = z.object({
 });
 
 export const foodItemSchema = z.object({
+  id: z.string().optional(),
+  itemName: z.string().min(2).trim(),
+  carbohydrates: z.coerce.number().nonnegative(),
+  proteins: z.coerce.number().nonnegative(),
+  fats: z.coerce.number().nonnegative(),
+  calories: z.coerce.number().nonnegative(),
+});
+
+export const personalFoodItemSchema = z.object({
+  id: z.string().optional(),
+  userId: z.string().optional(),
   itemName: z.string().min(2).trim(),
   carbohydrates: z.coerce.number().nonnegative(),
   proteins: z.coerce.number().nonnegative(),
@@ -86,7 +97,7 @@ export const medicalRecordSchema = z.object({
 export const foodLogSchema = z.object({
   id: z.string().optional(),
   userId: z.string().optional(),
-  foodItemId: z.string().min(1),
+  foodChoice: z.string().min(1),
   date: z.coerce.date(),
   dishName: z.string().min(1).trim().default("Meal"),
   quantityValue: z.coerce.number().positive(),

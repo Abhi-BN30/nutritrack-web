@@ -15,6 +15,7 @@ import {
   LogOut,
   Pencil,
   Plus,
+  Search,
   ShieldCheck,
   Trash2,
   UserRound,
@@ -436,6 +437,12 @@ type ControlOption = {
   label: string;
 };
 
+type FoodOption = {
+  value: string;
+  label: string;
+  searchText: string;
+};
+
 function TableControls({
   searchValue,
   onSearchChange,
@@ -496,6 +503,94 @@ function TableControls({
         </label>
       </div>
     </div>
+  );
+}
+
+function FoodChoiceField({
+  name,
+  value,
+  query,
+  isOpen,
+  onQueryChange,
+  onOpenChange,
+  onSelect,
+  options,
+  selectedLabel,
+}: {
+  name: string;
+  value: string;
+  query: string;
+  isOpen: boolean;
+  onQueryChange: (value: string) => void;
+  onOpenChange: (value: boolean) => void;
+  onSelect: (value: string) => void;
+  options: FoodOption[];
+  selectedLabel: string;
+}) {
+  return (
+    <label className="sm:col-span-2">
+      <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[#6a7669]">Food item</span>
+      <input type="hidden" name={name} value={value} />
+      <div className="relative">
+        <div className={`flex items-center rounded-md border bg-white transition-colors ${isOpen ? "border-[#245b35] ring-2 ring-[#dcebd9]" : "border-[#d8e2d5]"}`}>
+          <Search className="ml-3 size-4 shrink-0 text-[#6a7669]" />
+          <input
+            type="text"
+            value={query}
+            onChange={(event) => {
+              onQueryChange(event.target.value);
+              onOpenChange(true);
+            }}
+            onFocus={() => onOpenChange(true)}
+            placeholder="Search and select master or personal food"
+            className="h-11 w-full bg-transparent px-3 text-sm text-[#172117] outline-none placeholder:text-[#95a095]"
+            aria-autocomplete="list"
+          />
+          <button
+            type="button"
+            onClick={() => onOpenChange(!isOpen)}
+            className="mr-1 inline-flex size-9 items-center justify-center rounded-md text-[#6a7669] hover:bg-[#f4f7f2]"
+            aria-label="Toggle food options"
+          >
+            {isOpen ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+          </button>
+        </div>
+
+        {isOpen ? (
+          <div className="absolute z-20 mt-2 w-full overflow-hidden rounded-xl border border-[#d8e2d5] bg-white shadow-[0_18px_40px_rgba(23,33,23,0.12)]">
+            <div className="border-b border-[#edf2eb] bg-[#f7faf6] px-3 py-2 text-xs font-medium text-[#6a7669]">
+              {value && selectedLabel ? `Selected: ${selectedLabel}` : `${options.length} matching items`}
+            </div>
+            <div className="max-h-64 overflow-y-auto py-1">
+              {options.length === 0 ? (
+                <p className="px-3 py-3 text-sm text-[#6a7669]">No food items match your search.</p>
+              ) : (
+                options.map((option) => {
+                  const isSelected = option.value === value;
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onMouseDown={(event) => {
+                        event.preventDefault();
+                        onSelect(option.value);
+                        onQueryChange(option.label);
+                        onOpenChange(false);
+                      }}
+                      className={`flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left text-sm transition-colors ${isSelected ? "bg-[#edf7ec] text-[#245b35]" : "text-[#172117] hover:bg-[#f4f7f2]"}`}
+                    >
+                      <span className="min-w-0 truncate">{option.label}</span>
+                      {isSelected ? <span className="rounded-full bg-[#dcebd9] px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-[#245b35]">Selected</span> : null}
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        ) : null}
+      </div>
+      <p className="mt-1 text-xs text-[#6a7669]">Start typing to filter the list, then pick an item from the themed menu.</p>
+    </label>
   );
 }
 
@@ -787,8 +882,9 @@ function Tracker({ data }: { data: DashboardData }) {
   const [quantityMetric, setQuantityMetric] = useState<"GRAMS" | "ML" | "INTEGER">("GRAMS");
   const [selectedFoodChoice, setSelectedFoodChoice] = useState("");
   const [foodSearch, setFoodSearch] = useState("");
+  const [isFoodDropdownOpen, setIsFoodDropdownOpen] = useState(false);
 
-  const foodOptions = useMemo(
+  const foodOptions = useMemo<FoodOption[]>(
     () => [
       ...data.foodItems.map((item) => ({
         value: `MASTER:${item.id}`,
@@ -826,6 +922,7 @@ function Tracker({ data }: { data: DashboardData }) {
     setQuantityMetric("GRAMS");
     setSelectedFoodChoice("");
     setFoodSearch("");
+    setIsFoodDropdownOpen(false);
   };
 
   const openAddLogModal = () => {
@@ -833,6 +930,7 @@ function Tracker({ data }: { data: DashboardData }) {
     setQuantityMetric("GRAMS");
     setSelectedFoodChoice("");
     setFoodSearch("");
+    setIsFoodDropdownOpen(false);
     setIsLogModalOpen(true);
   };
 
@@ -842,6 +940,7 @@ function Tracker({ data }: { data: DashboardData }) {
     setQuantityMetric(log.quantityMetric);
     setSelectedFoodChoice(log.foodChoice);
     setFoodSearch(log.foodItem);
+    setIsFoodDropdownOpen(false);
     setIsLogModalOpen(true);
   };
 
@@ -924,7 +1023,7 @@ function Tracker({ data }: { data: DashboardData }) {
 
             <TargetCards totals={selectedTotals} targets={targetForSelectedDate} />
 
-            <div className="rounded-lg border border-dashed border-[#dbe5d8] bg-white p-4">
+            {/* <div className="rounded-lg border border-dashed border-[#dbe5d8] bg-white p-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <h2 className="font-semibold text-[#172117]">Log food intake</h2>
@@ -935,7 +1034,7 @@ function Tracker({ data }: { data: DashboardData }) {
                   Open add log form
                 </button>
               </div>
-            </div>
+            </div> */}
           </section>
 
           <section className="min-w-0 rounded-lg border border-[#dbe5d8] bg-white">
@@ -1035,31 +1134,17 @@ function Tracker({ data }: { data: DashboardData }) {
               </div>
 
               <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                <label className="sm:col-span-2">
-                  <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[#6a7669]">Search food item</span>
-                  <input
-                    type="text"
-                    value={foodSearch}
-                    onChange={(event) => setFoodSearch(event.target.value)}
-                    placeholder="Type to search master or personal foods"
-                    className="h-10 w-full rounded-md border border-[#d8e2d5] bg-white px-3 text-sm outline-none focus:border-[#245b35]"
-                  />
-                </label>
-
-                <label className="sm:col-span-2">
-                  <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[#6a7669]">Food item</span>
-                  <select
-                    name="foodChoice"
-                    value={selectedFoodChoice}
-                    onChange={(event) => setSelectedFoodChoice(event.target.value)}
-                    required
-                    className="h-10 w-full rounded-md border border-[#d8e2d5] bg-white px-3 text-sm"
-                  >
-                    <option value="">Select food</option>
-                    {filteredFoodOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-                  </select>
-                  <p className="mt-1 text-xs text-[#6a7669]">{selectedFoodChoice ? `Selected: ${selectedFoodLabel}` : `${filteredFoodOptions.length} matching items`}</p>
-                </label>
+                <FoodChoiceField
+                  name="foodChoice"
+                  value={selectedFoodChoice}
+                  query={foodSearch}
+                  isOpen={isFoodDropdownOpen}
+                  onQueryChange={setFoodSearch}
+                  onOpenChange={setIsFoodDropdownOpen}
+                  onSelect={setSelectedFoodChoice}
+                  options={filteredFoodOptions}
+                  selectedLabel={selectedFoodLabel}
+                />
 
                 <Field name="dishName" label="Dish / Meal / Description" defaultValue={editingLog?.dishName ?? ""} placeholder="Free Input Field" required />
                 <Field name="date" label="Date" type="date" defaultValue={editingLog?.date ?? selectedDate} required />
@@ -1110,44 +1195,44 @@ function Medical({ data }: { data: DashboardData }) {
 
   return (
     <>
-      <div className="grid gap-5 xl:grid-cols-[0.82fr_1.18fr]">
-        <section className="space-y-4">
+      <div className="space-y-4">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <StatCard label="Latest BMI" value={data.medicalRecords[0] ? round(data.medicalRecords[0].bmi) : "-"} helper="Most recent record" icon={HeartPulse} />
+          <StatCard label="Latest BP" value={data.medicalRecords[0] ? `${round(data.medicalRecords[0].bpHigh, 0)}/${round(data.medicalRecords[0].bpLow, 0)}` : "-"} helper="Systolic / Diastolic" icon={Activity} />
+          <StatCard label="Records" value={`${data.medicalRecords.length}`} helper="Total biometric entries" icon={Database} />
           <div className="rounded-lg border border-[#dbe5d8] bg-white p-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex h-full flex-col justify-between gap-3">
               <div>
-                <h2 className="font-semibold">Biometric data</h2>
-                <p className="mt-1 text-sm text-[#6a7669]">Add a new biometric entry or edit an existing dated record through the popup form.</p>
+                <p className="text-sm font-medium text-[#5b685a]">Biometric actions</p>
+                <p className="mt-1 text-xs text-[#6a7669]">Add a new entry or update an existing dated record.</p>
               </div>
               <button type="button" onClick={openAddMedicalModal} className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-[#245b35] px-4 text-sm font-semibold text-white hover:bg-[#1d4a2b]">
-                <Plus className="size-4" />
-                Add medical data
-              </button>
-            </div>
-          </div>
-        </section>
-        <section className="min-w-0 space-y-4">
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            <StatCard label="Latest BMI" value={data.medicalRecords[0] ? round(data.medicalRecords[0].bmi) : "-"} helper="" icon={HeartPulse} />
-            <StatCard label="Latest BP" value={data.medicalRecords[0] ? `${round(data.medicalRecords[0].bpHigh, 0)}/${round(data.medicalRecords[0].bpLow, 0)}` : "-"} helper="" icon={Activity} />
-            <StatCard label="Records" value={`${data.medicalRecords.length}`} helper="" icon={Database} />
-          </div>
-          <section className="min-w-0 rounded-lg border border-[#dbe5d8] bg-white">
-            <div className="flex items-center justify-between border-b border-[#e4ece1] p-4">
-              <h2 className="font-semibold">Biometric history</h2>
-              <button type="button" onClick={openAddMedicalModal} className="inline-flex items-center gap-2 rounded-md border border-[#d8e2d5] px-3 py-2 text-sm font-medium hover:bg-[#f4f7f2]">
                 <Plus className="size-4" />
                 Add entry
               </button>
             </div>
-            <div className="grid gap-3 p-4 sm:grid-cols-2">
-              {data.medicalRecords.length === 0 ? <p className="text-sm text-[#6a7669]">No medical records yet.</p> : data.medicalRecords.map((record) => (
-                <div key={record.id} className="rounded-lg border border-[#e4ece1] p-4">
-                  <div className="mb-3 flex items-center justify-between gap-3"><p className="font-medium">{record.displayDate}</p><div className="flex gap-2"><button type="button" onClick={() => openEditMedicalModal(record)} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]"><Pencil className="size-4" /></button><form action={deleteMedicalRecord}><input type="hidden" name="id" value={record.id} /><button className="rounded-md border border-[#ead0cb] p-2 text-[#a13f32] hover:bg-[#fff4f2]"><Trash2 className="size-4" /></button></form></div></div>
-                  <div className="grid grid-cols-2 gap-2 text-sm"><p>Weight: {round(record.weight)} kg</p><p>Height: {round(record.height)} cm</p><p>BMI: {round(record.bmi)}</p><p>BP: {round(record.bpHigh, 0)}/{round(record.bpLow, 0)}</p></div>
-                </div>
-              ))}
+          </div>
+        </div>
+
+        <section className="min-w-0 rounded-lg border border-[#dbe5d8] bg-white">
+          <div className="flex flex-col gap-3 border-b border-[#e4ece1] p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="font-semibold">Biometric history</h2>
+              <p className="text-sm text-[#6a7669]">Review, edit, or delete dated biometric records.</p>
             </div>
-          </section>
+            <button type="button" onClick={openAddMedicalModal} className="inline-flex items-center gap-2 rounded-md border border-[#d8e2d5] px-3 py-2 text-sm font-medium hover:bg-[#f4f7f2] sm:self-start">
+              <Plus className="size-4" />
+              Add entry
+            </button>
+          </div>
+          <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3">
+            {data.medicalRecords.length === 0 ? <p className="text-sm text-[#6a7669]">No medical records yet.</p> : data.medicalRecords.map((record) => (
+              <div key={record.id} className="rounded-lg border border-[#e4ece1] p-4">
+                <div className="mb-3 flex items-center justify-between gap-3"><p className="font-medium">{record.displayDate}</p><div className="flex gap-2"><button type="button" onClick={() => openEditMedicalModal(record)} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]"><Pencil className="size-4" /></button><form action={deleteMedicalRecord}><input type="hidden" name="id" value={record.id} /><button className="rounded-md border border-[#ead0cb] p-2 text-[#a13f32] hover:bg-[#fff4f2]"><Trash2 className="size-4" /></button></form></div></div>
+                <div className="grid grid-cols-2 gap-2 text-sm"><p>Weight: {round(record.weight)} kg</p><p>Height: {round(record.height)} cm</p><p>BMI: {round(record.bmi)}</p><p>BP: {round(record.bpHigh, 0)}/{round(record.bpLow, 0)}</p></div>
+              </div>
+            ))}
+          </div>
         </section>
       </div>
 

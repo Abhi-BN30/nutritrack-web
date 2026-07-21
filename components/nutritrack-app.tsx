@@ -847,7 +847,7 @@ function Shell({ data, tab, setTab, children }: { data: DashboardData; tab: Tab;
             <div className="flex items-center gap-3">
               <div className="grid size-10 place-items-center rounded-lg bg-[#245b35] font-bold text-white">N</div>
               <div>
-                <p className="font-semibold">NutriTrack</p>
+                <p className="font-semibold">LCHF</p>
                 <p className="text-xs text-[#6a7669]">{data.currentUser.role === "ADMIN" ? "Admin workspace" : "User workspace"}</p>
               </div>
             </div>
@@ -2252,7 +2252,7 @@ function Admin({ data }: { data: DashboardData }) {
   );
 }
 
-export function NutriTrackApp({ data }: { data: DashboardData }) {
+export function LCHFApp({ data }: { data: DashboardData }) {
   const [tab, setTab] = useState<Tab>(data.currentUser.role === "ADMIN" ? "admin" : "tracker");
 
   return (

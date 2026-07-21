@@ -3,14 +3,14 @@ import { PwaRegister } from "@/components/pwa-register";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "LCHF",
-  description: "Centralized nutrition, medical biometrics, and patient analytics.",
-  applicationName: "LCHF",
+  title: "NutriTrack",
+  description: "Centralized nutrition, medical biometrics, and user analytics.",
+  applicationName: "NutriTrack",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "LCHF",
+    title: "NutriTrack",
   },
   formatDetection: {
     telephone: false,

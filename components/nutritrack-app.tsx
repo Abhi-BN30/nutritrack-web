@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import {
   Activity,
   Apple,
@@ -13,6 +13,7 @@ import {
   HeartPulse,
   LockKeyhole,
   LogOut,
+  Menu,
   Pencil,
   Plus,
   Search,
@@ -797,6 +798,7 @@ function getHeaderHighlights(tab: Tab, data: DashboardData): HeaderHighlight[] {
 }
 
 function Shell({ data, tab, setTab, children }: { data: DashboardData; tab: Tab; setTab: (tab: Tab) => void; children: React.ReactNode }) {
+  const mobileMenuRef = useRef<HTMLDivElement | null>(null);
   const tabs: { id: Tab; label: string; icon: typeof Activity; adminOnly?: boolean }[] = [
     { id: "tracker", label: "Tracker", icon: Apple },
     { id: "medical", label: "Medical", icon: HeartPulse },
@@ -805,31 +807,105 @@ function Shell({ data, tab, setTab, children }: { data: DashboardData; tab: Tab;
     { id: "profile", label: "Profile", icon: UserRound },
     { id: "admin", label: "Admin", icon: ShieldCheck, adminOnly: true },
   ];
-  const activeTab = tabs.find((item) => item.id === tab) ?? tabs[0];
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const visibleTabs = tabs.filter((item) => !item.adminOnly || data.currentUser.role === "ADMIN");
+  const activeTab = visibleTabs.find((item) => item.id === tab) ?? visibleTabs[0];
   const headerHighlights = getHeaderHighlights(tab, data);
+
+  useEffect(() => {
+    if (!mobileMenuOpen) {
+      return;
+    }
+
+    const handlePointerDown = (event: MouseEvent | TouchEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) {
+        return;
+      }
+
+      if (mobileMenuRef.current?.contains(target)) {
+        return;
+      }
+
+      setMobileMenuOpen(false);
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("touchstart", handlePointerDown);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("touchstart", handlePointerDown);
+    };
+  }, [mobileMenuOpen]);
 
   return (
     <main className="min-h-screen overflow-x-hidden bg-[#f7faf5] text-[#172117]">
-      <header className="sticky top-0 z-20 border-b border-[#dbe5d8] bg-white/95 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex items-center gap-3">
-            <div className="grid size-10 place-items-center rounded-lg bg-[#245b35] font-bold text-white">N</div>
-            <div>
-              <p className="font-semibold">NutriTrack</p>
-              <p className="text-xs text-[#6a7669]">{data.currentUser.role === "ADMIN" ? "Admin workspace" : "User workspace"}</p>
+      <header ref={mobileMenuRef} className="sticky top-0 z-20 border-b border-[#dbe5d8] bg-white/95 backdrop-blur">
+        <div className="mx-auto max-w-7xl px-4 py-3 sm:px-6">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="grid size-10 place-items-center rounded-lg bg-[#245b35] font-bold text-white">N</div>
+              <div>
+                <p className="font-semibold">NutriTrack</p>
+                <p className="text-xs text-[#6a7669]">{data.currentUser.role === "ADMIN" ? "Admin workspace" : "User workspace"}</p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen((value) => !value)}
+              className="inline-flex h-10 items-center gap-2 rounded-md border border-[#d8e2d5] px-3 text-sm font-medium hover:bg-[#edf3ea] lg:hidden"
+              aria-expanded={mobileMenuOpen}
+              aria-label="Toggle top navigation"
+            >
+              <Menu className="size-4" />
+              {activeTab?.label ?? "Menu"}
+              {mobileMenuOpen ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+            </button>
+
+            <div className="hidden items-center gap-2 lg:flex">
+              <InstallAppButton compactLabel="Install" />
+              <form action={signOut}><button className="flex h-10 items-center gap-2 rounded-md border border-[#d8e2d5] px-3 text-sm font-medium hover:bg-[#edf3ea]"><LogOut className="size-4" />Sign out</button></form>
             </div>
           </div>
-          <nav className="flex w-full gap-1 overflow-x-auto pb-1 lg:w-auto lg:pb-0">
-            {tabs.filter((item) => !item.adminOnly || data.currentUser.role === "ADMIN").map((item) => (
+
+          <nav className="mt-3 hidden w-full gap-1 overflow-x-auto pb-1 lg:flex lg:w-auto lg:pb-0">
+            {visibleTabs.map((item) => (
               <button key={item.id} onClick={() => setTab(item.id)} className={`flex h-10 items-center gap-2 rounded-md px-3 text-sm font-medium whitespace-nowrap ${tab === item.id ? "bg-[#245b35] text-white" : "text-[#4d5b4c] hover:bg-[#edf3ea]"}`}>
                 <item.icon className="size-4" />{item.label}
               </button>
             ))}
           </nav>
-          <div className="flex flex-wrap items-center gap-2">
-            <InstallAppButton compactLabel="Install" />
-            <form action={signOut}><button className="flex h-10 items-center gap-2 rounded-md border border-[#d8e2d5] px-3 text-sm font-medium hover:bg-[#edf3ea]"><LogOut className="size-4" />Sign out</button></form>
-          </div>
+
+          {mobileMenuOpen ? (
+            <div className="mt-3 rounded-xl border border-[#dbe5d8] bg-[#f9fbf8] p-3 lg:hidden">
+              <div className="space-y-2">
+                {visibleTabs.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => {
+                      setTab(item.id);
+                      setMobileMenuOpen(false);
+                    }}
+                    className={`flex w-full items-center gap-2 rounded-md px-3 py-2.5 text-left text-sm font-medium ${tab === item.id ? "bg-[#245b35] text-white" : "text-[#4d5b4c] hover:bg-white"}`}
+                  >
+                    <item.icon className="size-4" />
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+              <div className="mt-3 border-t border-[#e4ece1] pt-3">
+                <div className="flex flex-col gap-2">
+                  <InstallAppButton compactLabel="Install" className="w-full" />
+                  <form action={signOut}>
+                    <button className="flex h-10 w-full items-center gap-2 rounded-md border border-[#d8e2d5] px-3 text-sm font-medium hover:bg-white"><LogOut className="size-4" />Sign out</button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          ) : null}
         </div>
       </header>
       <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6">

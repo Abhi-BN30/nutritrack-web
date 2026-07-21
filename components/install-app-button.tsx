@@ -1,7 +1,7 @@
 "use client";
 
 import { Download } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 declare global {
   interface BeforeInstallPromptEvent extends Event {
@@ -17,9 +17,17 @@ type InstallAppButtonProps = {
 
 export function InstallAppButton({ className = "", compactLabel }: InstallAppButtonProps) {
   const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(null);
-  const [installed, setInstalled] = useState(false);
+  const [installed, setInstalled] = useState(() => {
+    if (typeof window === "undefined") {
+      return false;
+    }
+
+    return window.matchMedia("(display-mode: standalone)").matches || (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
+  });
+  const [showFallback, setShowFallback] = useState(false);
 
   useEffect(() => {
+
     const onBeforeInstallPrompt = (event: Event) => {
       event.preventDefault();
       setInstallEvent(event as BeforeInstallPromptEvent);
@@ -28,6 +36,7 @@ export function InstallAppButton({ className = "", compactLabel }: InstallAppBut
     const onInstalled = () => {
       setInstalled(true);
       setInstallEvent(null);
+      setShowFallback(false);
     };
 
     window.addEventListener("beforeinstallprompt", onBeforeInstallPrompt);
@@ -39,37 +48,56 @@ export function InstallAppButton({ className = "", compactLabel }: InstallAppBut
     };
   }, []);
 
+  const isAndroidLike = useMemo(() => {
+    if (typeof navigator === "undefined") {
+      return false;
+    }
+
+    return /android/i.test(navigator.userAgent);
+  }, []);
+
   if (installed) {
+    return null;
+  }
+
+  if (installEvent) {
     return (
-      <span
-        className={`inline-flex items-center rounded-md border border-[#d8e2d5] px-3 py-2 text-sm font-medium text-[#4d5b4c] ${className}`}
+      <button
+        type="button"
+        onClick={async () => {
+          await installEvent.prompt();
+          const choice = await installEvent.userChoice;
+          if (choice.outcome !== "accepted") {
+            setShowFallback(true);
+          }
+        }}
+        className={`inline-flex items-center gap-2 rounded-md border border-[#d8e2d5] px-3 py-2 text-sm font-semibold text-[#245b35] hover:bg-[#edf7ec] ${className}`}
       >
-        App installed
-      </span>
+        <Download className="size-4" />
+        {compactLabel ?? "Install app"}
+      </button>
     );
   }
 
-  if (!installEvent) {
-    return (
-      <span
-        className={`inline-flex items-center rounded-md border border-dashed border-[#d8e2d5] px-3 py-2 text-sm text-[#6a7669] ${className}`}
-      >
-        
-      </span>
-    );
+  if (!isAndroidLike) {
+    return null;
   }
 
   return (
-    <button
-      type="button"
-      onClick={async () => {
-        await installEvent.prompt();
-        await installEvent.userChoice;
-      }}
-      className={`inline-flex items-center gap-2 rounded-md border border-[#d8e2d5] px-3 py-2 text-sm font-semibold text-[#245b35] hover:bg-[#edf7ec] ${className}`}
-    >
-      <Download className="size-4" />
-      {compactLabel ?? "Install app"}
-    </button>
+    <div className={`flex flex-col items-start gap-2 ${className}`}>
+      <button
+        type="button"
+        onClick={() => setShowFallback((value) => !value)}
+        className="inline-flex items-center gap-2 rounded-md border border-[#d8e2d5] px-3 py-2 text-sm font-semibold text-[#245b35] hover:bg-[#edf7ec]"
+      >
+        <Download className="size-4" />
+        {compactLabel ?? "Install app"}
+      </button>
+      {showFallback ? (
+        <p className="max-w-xs text-xs leading-5 text-[#6a7669]">
+          If install is not shown automatically, open your browser menu and choose <span className="font-semibold text-[#245b35]">Install app</span> or <span className="font-semibold text-[#245b35]">Add to Home screen</span>.
+        </p>
+      ) : null}
+    </div>
   );
 }

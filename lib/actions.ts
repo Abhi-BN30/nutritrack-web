@@ -54,12 +54,12 @@ function calculateProteinCarbRatio(proteins: number, carbs: number) {
   return Math.round((proteins / carbs) * 10) / 10;
 }
 
-function convertQuantityToGrams(quantityValue: number, quantityMetric: "GRAMS" | "ML" | "INTEGER") {
+function getQuantityScale(quantityValue: number, quantityMetric: "GRAMS" | "ML" | "INTEGER") {
   if (quantityMetric === "INTEGER") {
-    return quantityValue * 100;
+    return quantityValue;
   }
 
-  return quantityValue;
+  return quantityValue / 100;
 }
 
 function parseFoodChoice(foodChoice: string) {
@@ -620,8 +620,7 @@ export async function saveFoodLog(_state: ActionState, formData: FormData): Prom
     return { message: "Selected food item was not found." };
   }
 
-  const quantityGms = convertQuantityToGrams(parsed.data.quantityValue, parsed.data.quantityMetric);
-  const scale = quantityGms / 100;
+  const scale = getQuantityScale(parsed.data.quantityValue, parsed.data.quantityMetric);
   const proteins = nutrientsSource.proteins * scale;
   const carbs = nutrientsSource.carbohydrates * scale;
   const fats = nutrientsSource.fats * scale;
@@ -645,7 +644,6 @@ export async function saveFoodLog(_state: ActionState, formData: FormData): Prom
           dishName: parsed.data.dishName,
           quantityValue: parsed.data.quantityValue,
           quantityMetric: parsed.data.quantityMetric,
-          quantityGms,
           carbs,
           proteins,
           fats,
@@ -667,7 +665,6 @@ export async function saveFoodLog(_state: ActionState, formData: FormData): Prom
         dishName: parsed.data.dishName,
         quantityValue: parsed.data.quantityValue,
         quantityMetric: parsed.data.quantityMetric,
-        quantityGms,
         carbs,
         proteins,
         fats,

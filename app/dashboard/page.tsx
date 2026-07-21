@@ -285,7 +285,6 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       dishName: log.dishName,
       quantityValue: log.quantityValue,
       quantityMetric: log.quantityMetric as "GRAMS" | "ML" | "INTEGER",
-      quantityGms: log.quantityGms,
       carbs: log.carbs,
       proteins: log.proteins,
       fats: log.fats,

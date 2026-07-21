@@ -162,3 +162,8 @@ CREATE INDEX IF NOT EXISTS food_logs_personal_food_item_idx
 
 -- Existing rows stay valid automatically because they already reference
 -- food_items through foodItemId and personalFoodItemId will remain NULL.
+
+
+-- 10) quantityGms is no longer needed once quantityValue has been backfilled.
+-- Run this only after Step 7 has already populated quantityValue for old rows.
+ALTER TABLE food_logs DROP COLUMN IF EXISTS "quantityGms";

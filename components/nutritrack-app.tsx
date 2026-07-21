@@ -93,7 +93,6 @@ type FoodLog = {
   dishName: string;
   quantityValue: number;
   quantityMetric: "GRAMS" | "ML" | "INTEGER";
-  quantityGms: number;
   carbs: number;
   proteins: number;
   fats: number;
@@ -1544,7 +1543,17 @@ function DatabaseTab({ data }: { data: DashboardData }) {
           </div>
           <div className="hidden overflow-x-auto lg:block">
             <table className="w-full min-w-[760px] text-sm">
-              <thead className="bg-[#f4f8f2] text-left"><tr><th className="p-3">Item</th><th className="p-3">Owner Email</th><th className="p-3">Carbs</th><th className="p-3">Proteins</th><th className="p-3">Fats</th><th className="p-3">Calories</th>{canManagePersonal ? <th className="p-3">Actions</th> : null}</tr></thead>
+              <thead className="bg-[#f4f8f2] text-left">
+                <tr>
+                  <th className="p-3">Item</th>
+                  {/* <th className="p-3">Owner Email</th> */}
+                  <th className="p-3">Carbs</th>
+                  <th className="p-3">Proteins</th>
+                  <th className="p-3">Fats</th>
+                  <th className="p-3">Calories</th>
+                  {canManagePersonal ? <th className="p-3">Actions</th> : null}
+                </tr>
+              </thead>
               <tbody>{filteredPersonalFoodItems.length === 0 ? <tr><td colSpan={canManagePersonal ? 7 : 6} className="p-4 text-center text-[#6a7669]">No personal food items found.</td></tr> : filteredPersonalFoodItems.map((item) => <tr key={item.id} className="border-t border-[#eef3ec]"><td className="p-3 font-medium">{item.itemName}</td><td className="p-3">{item.ownerEmail}</td><td className="p-3">{round(item.carbohydrates)}g</td><td className="p-3">{round(item.proteins)}g</td><td className="p-3">{round(item.fats)}g</td><td className="p-3">{round(item.calories, 0)}</td>{canManagePersonal ? <td className="p-3"><div className="flex gap-2"><button type="button" onClick={() => setEditingPersonalFood(item)} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]"><Pencil className="size-4" /></button><form action={deletePersonalFoodItem}><input type="hidden" name="id" value={item.id} /><button className="rounded-md border border-[#ead0cb] p-2 text-[#a13f32] hover:bg-[#fff4f2]"><Trash2 className="size-4" /></button></form></div></td> : null}</tr>)}</tbody>
             </table>
           </div>

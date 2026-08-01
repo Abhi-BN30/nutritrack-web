@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import {
   CartesianGrid,
+  LabelList,
   Legend,
   Line,
   LineChart,
@@ -33,6 +34,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { toast, Toaster } from "sonner";
 import type { NameType, ValueType } from "recharts/types/component/DefaultTooltipContent";
 import { InstallAppButton } from "@/components/install-app-button";
 import {
@@ -183,6 +185,38 @@ function round(value: number | null | undefined, places = 1) {
   return value.toFixed(places);
 }
 
+function formatDisplayDate(value: string | number | Date | null | undefined) {
+  if (value === null || value === undefined || value === "") {
+    return "";
+  }
+
+  const normalized = typeof value === "string" || typeof value === "number" ? String(value) : value.toISOString().slice(0, 10);
+  const [year, month, day] = normalized.split("-").map(Number);
+
+  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
+    return "";
+  }
+
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+  const monthName = new Intl.DateTimeFormat("en-US", { month: "long" }).format(parsed);
+  return `${String(parsed.getUTCDate()).padStart(2, "0")}/${monthName}/${parsed.getUTCFullYear()}`;
+}
+
+function useActionToast(state: ActionState | { ok?: boolean; message?: string }) {
+  useEffect(() => {
+    if (!state.message) {
+      return;
+    }
+
+    if (state.ok) {
+      toast.success(state.message);
+      return;
+    }
+
+    toast.error(state.message);
+  }, [state]);
+}
+
 function shiftDate(date: string, days: number) {
   const [year, month, day] = date.split("-").map(Number);
   const utcDate = new Date(Date.UTC(year, month - 1, day));
@@ -331,6 +365,49 @@ function DonutChart({ percent, label }: { percent: number; label: string }) {
   );
 }
 
+function DateField({
+  name,
+  label,
+  defaultValue,
+  required = false,
+}: {
+  name: string;
+  label: string;
+  defaultValue?: string | number | null;
+  required?: boolean;
+}) {
+  const [dateValue, setDateValue] = useState<string>(() => {
+    const rawValue = typeof defaultValue === "string" || typeof defaultValue === "number" ? String(defaultValue) : defaultValue ?? "";
+    return rawValue;
+  });
+  const nativeInputRef = useRef<HTMLInputElement | null>(null);
+
+  return (
+    <label className="block">
+      <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[#6a7669]">{label}</span>
+      <div className="relative">
+        <input
+          type="text"
+          readOnly
+          value={formatDisplayDate(dateValue)}
+          onClick={() => nativeInputRef.current?.showPicker?.()}
+          placeholder="DD/Month/YYYY"
+          className="h-10 w-full rounded-md border border-[#d8e2d5] bg-white px-3 text-sm outline-none focus:border-[#245b35]"
+        />
+        <input
+          ref={nativeInputRef}
+          name={name}
+          type="date"
+          value={dateValue}
+          onChange={(event) => setDateValue(event.target.value)}
+          required={required}
+          className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+        />
+      </div>
+    </label>
+  );
+}
+
 function Field({
   name,
   label,
@@ -348,6 +425,10 @@ function Field({
   step?: string;
   placeholder?: string;
 }) {
+  if (type === "date") {
+    return <DateField name={name} label={label} defaultValue={defaultValue} required={required} />;
+  }
+
   return (
     <label className="block">
       <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[#6a7669]">{label}</span>
@@ -366,7 +447,65 @@ function Field({
 
 function ActionMessage({ state }: { state: ActionState }) {
   if (!state.message) return null;
-  return <p className={`rounded-md px-3 py-2 text-sm ${state.ok ? "bg-[#edf7ec] text-[#245b35]" : "bg-[#fff4e8] text-[#8a4a12]"}`}>{state.message}</p>;
+  return null;
+}
+
+function SingleValueChart({
+  title,
+  data,
+  dataKey,
+  color,
+  denominator,
+  tickFormatter,
+  labelFormatter,
+  valueLabelKey,
+}: {
+  title: string;
+  data: Array<Record<string, string | number | undefined | null>>;
+  dataKey: string;
+  color: string;
+  denominator: string;
+  tickFormatter: (value: number) => string;
+  labelFormatter?: (value: number | string) => string;
+  valueLabelKey: string;
+}) {
+  return (
+    <section className="rounded-lg border border-[#dbe5d8] bg-white p-4">
+      <div className="mb-3">
+        <h3 className="font-semibold">{title}</h3>
+      </div>
+      <div className="h-[300px] w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={data} margin={{ top: 16, right: 12, left: 0, bottom: 8 }}>
+            <CartesianGrid stroke="#e7eee4" strokeDasharray="4 4" />
+            <XAxis dataKey="label" tick={{ fontSize: 12, fill: "#6a7669" }} minTickGap={18} />
+            <YAxis tick={{ fontSize: 12, fill: "#6a7669" }} tickFormatter={tickFormatter} width={52} />
+            <Tooltip
+              contentStyle={{ borderRadius: 12, borderColor: "#d8e2d5" }}
+              formatter={(value: ValueType | undefined) => {
+                const numericValue = typeof value === "number" ? value : Number(value);
+                return typeof numericValue === "number" && Number.isFinite(numericValue)
+                  ? [labelFormatter ? labelFormatter(numericValue) : `${round(numericValue)}${denominator}`, title]
+                  : [value ?? "-", title];
+              }}
+              labelFormatter={(label) => `Date: ${String(label)}`}
+            />
+            <Line
+              type="monotone"
+              dataKey={dataKey}
+              name={title}
+              stroke={color}
+              strokeWidth={3}
+              dot={{ r: 3 }}
+              activeDot={{ r: 5 }}
+            >
+              <LabelList dataKey={valueLabelKey} position="top" style={{ fill: "#172117", fontSize: 11 }} />
+            </Line>
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+    </section>
+  );
 }
 
 function MiniMetric({
@@ -845,7 +984,7 @@ function Shell({ data, tab, setTab, children }: { data: DashboardData; tab: Tab;
         <div className="mx-auto max-w-7xl px-4 py-3 sm:px-6">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="grid size-10 place-items-center rounded-lg bg-[#245b35] font-bold text-white">N</div>
+              <div className="grid size-10 place-items-center rounded-lg bg-[#245b35] font-bold text-white">L</div>
               <div>
                 <p className="font-semibold">LCHF</p>
                 <p className="text-xs text-[#6a7669]">{data.currentUser.role === "ADMIN" ? "Admin workspace" : "User workspace"}</p>
@@ -908,6 +1047,7 @@ function Shell({ data, tab, setTab, children }: { data: DashboardData; tab: Tab;
           ) : null}
         </div>
       </header>
+      <Toaster position="top-right" richColors closeButton />
       <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6">
         <section className="mb-5 grid gap-4 2xl:grid-cols-[1.05fr_1.25fr]">
           <div className="rounded-lg border border-[#dbe5d8] bg-white p-4">
@@ -948,6 +1088,7 @@ function Shell({ data, tab, setTab, children }: { data: DashboardData; tab: Tab;
 }
 function Tracker({ data }: { data: DashboardData }) {
   const [state, action] = useActionState(saveFoodLog, initialState);
+  useActionToast(state);
   const [selectedDate, setSelectedDate] = useState(today);
   const [showAllLogs, setShowAllLogs] = useState(false);
   const [search, setSearch] = useState("");
@@ -1072,8 +1213,24 @@ function Tracker({ data }: { data: DashboardData }) {
   const targetForSelectedDate = resolveTargetForDate(data.targetProfiles, selectedDate);
   const quantityStep = quantityMetric === "INTEGER" ? "1" : "0.1";
 
+  useEffect(() => {
+    if (state.ok) {
+      closeLogModal();
+    }
+  }, [state.ok]);
+
   return (
     <>
+      <button
+        type="button"
+        onClick={openAddLogModal}
+        className="fixed bottom-5 right-5 z-30 inline-flex items-center gap-2 rounded-full bg-[#245b35] px-4 py-3 text-sm font-semibold text-white shadow-[0_12px_30px_rgba(36,91,53,0.35)] transition hover:bg-[#1d4a2b]"
+        aria-label="Add food log"
+      >
+        <Plus className="size-4" />
+        Add
+      </button>
+
       <div className="space-y-5">
         <div className="grid gap-5 2xl:grid-cols-[0.95fr_1.05fr]">
           <section className="min-w-0 space-y-4">
@@ -1086,7 +1243,21 @@ function Tracker({ data }: { data: DashboardData }) {
                   <div className="w-full sm:w-52">
                     <label className="block">
                       <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[#6a7669]">Viewing date</span>
-                      <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="h-10 w-full rounded-md border border-[#d8e2d5] bg-white px-3 text-sm outline-none focus:border-[#245b35]" />
+                      <div className="relative">
+                        <input
+                          type="text"
+                          readOnly
+                          value={formatDisplayDate(selectedDate)}
+                          onClick={() => {
+                            const picker = document.createElement("input");
+                            picker.type = "date";
+                            picker.value = selectedDate;
+                            picker.onchange = (event) => setSelectedDate((event.target as HTMLInputElement).value);
+                            picker.showPicker?.();
+                          }}
+                          className="h-10 w-full rounded-md border border-[#d8e2d5] bg-white px-3 text-sm outline-none focus:border-[#245b35]"
+                        />
+                      </div>
                     </label>
                   </div>
                   <button type="button" onClick={openAddLogModal} className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-[#245b35] px-4 text-sm font-semibold text-white hover:bg-[#1d4a2b]">
@@ -1120,6 +1291,7 @@ function Tracker({ data }: { data: DashboardData }) {
                   <h2 className="font-semibold">Meals and Ingredients</h2>
                 </div>
                 <div className="flex flex-wrap gap-2">
+                  <button type="button" onClick={() => downloadCsv("LCHF-meals-ingredients.csv", [["Date", "Dish", "Food item", "Qty", "Carbs", "Proteins", "Fats", "Calories", "Protein/Carb ratio"], ...visibleLogs.map((log) => [log.displayDate, log.dishName, log.foodItem, formatQuantityDisplay(log.quantityValue, log.quantityMetric), round(log.carbs), round(log.proteins), round(log.fats), round(log.calories, 0), log.proteinCarbRatio === null ? "-" : round(log.proteinCarbRatio)])])} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]" aria-label="Download meals and ingredients table"><Download className="size-4" /></button>
                   <button type="button" onClick={() => setShowAllLogs(false)} className={`rounded-md border px-3 py-2 text-sm ${!showAllLogs ? "border-[#245b35] bg-[#edf7ec] text-[#245b35]" : "border-[#d8e2d5] hover:bg-[#f4f7f2]"}`}>Selected day only</button>
                   <button type="button" onClick={() => setShowAllLogs(true)} className={`rounded-md border px-3 py-2 text-sm ${showAllLogs ? "border-[#245b35] bg-[#edf7ec] text-[#245b35]" : "border-[#d8e2d5] hover:bg-[#f4f7f2]"}`}>Show all logs</button>
                 </div>
@@ -1251,6 +1423,7 @@ function Tracker({ data }: { data: DashboardData }) {
 
 function Medical({ data }: { data: DashboardData }) {
   const [state, action] = useActionState(saveMedicalRecord, initialState);
+  useActionToast(state);
   const [editingRecord, setEditingRecord] = useState<MedicalRecord | null>(null);
   const [isMedicalModalOpen, setIsMedicalModalOpen] = useState(false);
 
@@ -1268,6 +1441,12 @@ function Medical({ data }: { data: DashboardData }) {
     setEditingRecord(record);
     setIsMedicalModalOpen(true);
   };
+
+  useEffect(() => {
+    if (state.ok) {
+      closeMedicalModal();
+    }
+  }, [state.ok]);
 
   return (
     <>
@@ -1470,6 +1649,22 @@ function Graphs({ data }: { data: DashboardData }) {
   const avgBpHigh = average(filteredBiometricSeries.map((entry) => entry.bpHigh));
   const avgBpLow = average(filteredBiometricSeries.map((entry) => entry.bpLow));
 
+  const nutritionChartData = filteredNutritionSeries.map((entry) => ({
+    ...entry,
+    caloriesLabel: `${round(entry.calories, 0)} kcal`,
+    carbsLabel: `${round(entry.carbs)} g`,
+    proteinsLabel: `${round(entry.proteins)} g`,
+    fatsLabel: `${round(entry.fats)} g`,
+  }));
+
+  const biometricChartData = filteredBiometricSeries.map((entry) => ({
+    ...entry,
+    bmiLabel: `${round(entry.bmi)}`,
+    weightLabel: `${round(entry.weight)} kg`,
+    bpHighLabel: `${round(entry.bpHigh, 0)}`,
+    bpLowLabel: `${round(entry.bpLow, 0)}`,
+  }));
+
   const rangeButtons: { id: "7d" | "30d" | "all"; label: string }[] = [
     { id: "7d", label: "Last 7 days" },
     { id: "30d", label: "Last 30 days" },
@@ -1561,14 +1756,11 @@ function Graphs({ data }: { data: DashboardData }) {
       </section>
 
 
-      <div className="grid gap-5 2xl:grid-cols-2">
+      <div className="grid gap-5">
         <section className="rounded-lg border border-[#dbe5d8] bg-white p-4">
           <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <h2 className="font-semibold">Nutrition trend</h2>
-              {/* <p className="text-sm text-[#6a7669]">
-                Dual-axis line chart showing daily nutrient grams and calories over time.
-              </p> */}
             </div>
             {latestNutrition ? (
               <p className="text-xs text-[#6a7669]">
@@ -1589,25 +1781,12 @@ function Graphs({ data }: { data: DashboardData }) {
               No nutrition data falls within the selected range.
             </div>
           ) : (
-            <>
-              <div className="mt-5 h-[320px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={filteredNutritionSeries} margin={{ top: 8, right: 12, left: 0, bottom: 8 }}>
-                    <CartesianGrid stroke="#e7eee4" strokeDasharray="4 4" />
-                    <XAxis dataKey="label" tick={{ fontSize: 12, fill: "#6a7669" }} minTickGap={24} />
-                    <YAxis yAxisId="grams" tick={{ fontSize: 12, fill: "#6a7669" }} tickFormatter={(value: number) => `${value}g`} width={52} />
-                    <YAxis yAxisId="calories" orientation="right" tick={{ fontSize: 12, fill: "#6a7669" }} tickFormatter={(value: number) => `${value}`} width={44} />
-                    <Tooltip contentStyle={{ borderRadius: 12, borderColor: "#d8e2d5" }} formatter={nutritionTooltipFormatter} labelFormatter={(label) => `Date: ${label}`} />
-                    <Legend />
-                    <Line yAxisId="grams" type="monotone" dataKey="carbs" name="Carbs" stroke="#4f7f5d" strokeWidth={2.5} dot={{ r: 2 }} activeDot={{ r: 5 }} />
-                    <Line yAxisId="grams" type="monotone" dataKey="proteins" name="Proteins" stroke="#245b35" strokeWidth={2.5} dot={{ r: 2 }} activeDot={{ r: 5 }} />
-                    <Line yAxisId="grams" type="monotone" dataKey="fats" name="Fats" stroke="#c78b46" strokeWidth={2.5} dot={{ r: 2 }} activeDot={{ r: 5 }} />
-                    <Line yAxisId="calories" type="monotone" dataKey="calories" name="Calories" stroke="#1b4965" strokeWidth={3} dot={{ r: 2 }} activeDot={{ r: 5 }} />
-                    <Line yAxisId="calories" type="monotone" dataKey="targetCalories" name="Target calories" stroke="#9aa79b" strokeDasharray="6 6" strokeWidth={2} dot={false} connectNulls />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </>
+            <div className="mt-5 grid gap-4 xl:grid-cols-2">
+              <SingleValueChart title="Calories trend" data={nutritionChartData} dataKey="calories" color="#1b4965" denominator=" kcal" tickFormatter={(value) => `${Math.round(value)}`} labelFormatter={(value) => `${Math.round(Number(value))} kcal`} valueLabelKey="caloriesLabel" />
+              <SingleValueChart title="Carbs trend" data={nutritionChartData} dataKey="carbs" color="#4f7f5d" denominator=" g" tickFormatter={(value) => `${value}g`} labelFormatter={(value) => `${round(Number(value))} g`} valueLabelKey="carbsLabel" />
+              <SingleValueChart title="Proteins trend" data={nutritionChartData} dataKey="proteins" color="#245b35" denominator=" g" tickFormatter={(value) => `${value}g`} labelFormatter={(value) => `${round(Number(value))} g`} valueLabelKey="proteinsLabel" />
+              <SingleValueChart title="Fats trend" data={nutritionChartData} dataKey="fats" color="#c78b46" denominator=" g" tickFormatter={(value) => `${value}g`} labelFormatter={(value) => `${round(Number(value))} g`} valueLabelKey="fatsLabel" />
+            </div>
           )}
         </section>
 
@@ -1615,9 +1794,6 @@ function Graphs({ data }: { data: DashboardData }) {
           <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <h2 className="font-semibold">Biometric trend</h2>
-              {/* <p className="text-sm text-[#6a7669]">
-                Dual-axis line chart for BMI, weight, and blood pressure history.
-              </p> */}
             </div>
             {latestMedical ? (
               <p className="text-xs text-[#6a7669]">
@@ -1636,24 +1812,42 @@ function Graphs({ data }: { data: DashboardData }) {
               No biometric data falls within the selected range.
             </div>
           ) : (
-            <>
-              <div className="mt-5 h-[320px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={filteredBiometricSeries} margin={{ top: 8, right: 12, left: 0, bottom: 8 }}>
-                    <CartesianGrid stroke="#e7eee4" strokeDasharray="4 4" />
-                    <XAxis dataKey="label" tick={{ fontSize: 12, fill: "#6a7669" }} minTickGap={24} />
-                    <YAxis yAxisId="body" tick={{ fontSize: 12, fill: "#6a7669" }} width={44} />
-                    <YAxis yAxisId="bp" orientation="right" tick={{ fontSize: 12, fill: "#6a7669" }} width={44} />
-                    <Tooltip contentStyle={{ borderRadius: 12, borderColor: "#d8e2d5" }} formatter={biometricTooltipFormatter} labelFormatter={(label) => `Date: ${label}`} />
-                    <Legend />
-                    <Line yAxisId="body" type="monotone" dataKey="bmi" name="BMI" stroke="#245b35" strokeWidth={3} dot={{ r: 2 }} activeDot={{ r: 5 }} />
-                    <Line yAxisId="body" type="monotone" dataKey="weight" name="Weight" stroke="#4f7f5d" strokeWidth={2.5} dot={{ r: 2 }} activeDot={{ r: 5 }} />
-                    <Line yAxisId="bp" type="monotone" dataKey="bpHigh" name="BP High" stroke="#b55252" strokeWidth={2.5} dot={{ r: 2 }} activeDot={{ r: 5 }} />
-                    <Line yAxisId="bp" type="monotone" dataKey="bpLow" name="BP Low" stroke="#e18f3f" strokeWidth={2.5} dot={{ r: 2 }} activeDot={{ r: 5 }} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </>
+            <div className="mt-5 grid gap-4 xl:grid-cols-2">
+              <SingleValueChart title="BMI trend" data={biometricChartData} dataKey="bmi" color="#245b35" denominator="" tickFormatter={(value) => `${value}`} labelFormatter={(value) => `${round(Number(value))}`} valueLabelKey="bmiLabel" />
+              <SingleValueChart title="Weight trend" data={biometricChartData} dataKey="weight" color="#4f7f5d" denominator=" kg" tickFormatter={(value) => `${value}`} labelFormatter={(value) => `${round(Number(value))} kg`} valueLabelKey="weightLabel" />
+              <section className="rounded-lg border border-[#dbe5d8] bg-white p-4 xl:col-span-2">
+                <div className="mb-3">
+                  <h3 className="font-semibold">Blood pressure trend</h3>
+                </div>
+                <div className="h-[300px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={biometricChartData} margin={{ top: 16, right: 12, left: 0, bottom: 8 }}>
+                      <CartesianGrid stroke="#e7eee4" strokeDasharray="4 4" />
+                      <XAxis dataKey="label" tick={{ fontSize: 12, fill: "#6a7669" }} minTickGap={18} />
+                      <YAxis tick={{ fontSize: 12, fill: "#6a7669" }} width={44} />
+                      <Tooltip
+                        contentStyle={{ borderRadius: 12, borderColor: "#d8e2d5" }}
+                        formatter={(value: ValueType | undefined, name: NameType | undefined) => {
+                          const numericValue = typeof value === "number" ? value : Number(value);
+                          const displayName = name === "bpHigh" ? "BP High" : "BP Low";
+                          return typeof numericValue === "number" && Number.isFinite(numericValue)
+                            ? [`${Math.round(numericValue)}`, displayName]
+                            : [value ?? "-", displayName];
+                        }}
+                        labelFormatter={(label) => `Date: ${String(label)}`}
+                      />
+                      <Legend />
+                      <Line type="monotone" dataKey="bpHigh" name="BP High" stroke="#b55252" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }}>
+                        <LabelList dataKey="bpHighLabel" position="top" style={{ fill: "#172117", fontSize: 11 }} />
+                      </Line>
+                      <Line type="monotone" dataKey="bpLow" name="BP Low" stroke="#e18f3f" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }}>
+                        <LabelList dataKey="bpLowLabel" position="top" style={{ fill: "#172117", fontSize: 11 }} />
+                      </Line>
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </section>
+            </div>
           )}
         </section>
       </div>
@@ -1662,7 +1856,9 @@ function Graphs({ data }: { data: DashboardData }) {
 }
 function DatabaseTab({ data }: { data: DashboardData }) {
   const [masterState, masterAction] = useActionState(saveFoodItem, initialState);
+  useActionToast(masterState);
   const [personalState, personalAction] = useActionState(savePersonalFoodItem, initialState);
+  useActionToast(personalState);
   const [editingMasterFood, setEditingMasterFood] = useState<FoodItem | null>(null);
   const [editingPersonalFood, setEditingPersonalFood] = useState<PersonalFoodItem | null>(null);
   const [isMasterModalOpen, setIsMasterModalOpen] = useState(false);
@@ -1682,6 +1878,18 @@ function DatabaseTab({ data }: { data: DashboardData }) {
     setEditingMasterFood(null);
     setIsMasterModalOpen(true);
   };
+
+  useEffect(() => {
+    if (masterState.ok) {
+      closeMasterModal();
+    }
+  }, [masterState.ok]);
+
+  useEffect(() => {
+    if (personalState.ok) {
+      closePersonalModal();
+    }
+  }, [personalState.ok]);
 
   const openEditMasterModal = (item: FoodItem) => {
     setEditingMasterFood(item);
@@ -1985,8 +2193,11 @@ function DatabaseTab({ data }: { data: DashboardData }) {
 
 function Profile({ data }: { data: DashboardData }) {
   const [profileState, profileAction] = useActionState(updateProfile, initialState);
+  useActionToast(profileState);
   const [pinState, pinAction] = useActionState(updatePin, initialState);
+  useActionToast(pinState);
   const [targetState, targetAction] = useActionState(saveNutritionTarget, initialState);
+  useActionToast(targetState);
   const [targetSearch, setTargetSearch] = useState("");
   const [targetFilter, setTargetFilter] = useState<"all" | "past" | "todayForward" | "highCalories">("all");
   const [targetSort, setTargetSort] = useState<"effective_desc" | "effective_asc" | "calories_desc" | "proteins_desc">("effective_desc");
@@ -2113,6 +2324,7 @@ function Profile({ data }: { data: DashboardData }) {
 
 function Admin({ data }: { data: DashboardData }) {
   const [state, action] = useActionState(createUser, initialState);
+  useActionToast(state);
   const [userSearch, setUserSearch] = useState("");
   const [userRoleFilter, setUserRoleFilter] = useState<"all" | Role>("all");
   const [userSort, setUserSort] = useState<"name_asc" | "name_desc" | "tracking_desc" | "days_desc">("name_asc");

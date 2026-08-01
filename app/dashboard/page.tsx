@@ -15,11 +15,10 @@ function isoDate(date: Date) {
 }
 
 function displayDate(date: Date) {
-  return new Intl.DateTimeFormat("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  }).format(date);
+  const day = String(date.getUTCDate()).padStart(2, "0");
+  const month = new Intl.DateTimeFormat("en-US", { month: "long" }).format(date);
+  const year = date.getUTCFullYear();
+  return `${day}/${month}/${year}`;
 }
 
 function dayDiffInclusive(startDate: Date) {

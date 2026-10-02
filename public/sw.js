@@ -1,9 +1,9 @@
-const CACHE_NAME = "LCHF-static-v1";
-const APP_SHELL = ["/", "/manifest.webmanifest", "/icon.svg"];
+const CACHE_NAME = "LCHF-static-v2";
+const STATIC_ASSETS = ["/manifest.webmanifest", "/icon.svg", "/icon-192.png", "/icon-512.png"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)).then(() => self.skipWaiting()),
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS)).then(() => self.skipWaiting()),
   );
 });
 
@@ -17,18 +17,27 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("fetch", (event) => {
-  if (event.request.method !== "GET") {
+  const url = new URL(event.request.url);
+  const isStaticAsset =
+    url.origin === self.location.origin &&
+    (url.pathname.startsWith("/_next/static/") || STATIC_ASSETS.includes(url.pathname));
+
+  if (event.request.method !== "GET" || !isStaticAsset) {
     return;
   }
 
   event.respondWith(
     fetch(event.request)
       .then((response) => {
+        if (!response.ok) {
+          return response;
+        }
+
         const copy = response.clone();
         caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
         return response;
       })
-      .catch(() => caches.match(event.request).then((cached) => cached ?? caches.match("/"))),
+      .catch(() => caches.match(event.request)),
   );
 });
 

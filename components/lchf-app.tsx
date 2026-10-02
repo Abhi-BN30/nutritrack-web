@@ -1222,6 +1222,9 @@ function Tracker({ data }: { data: DashboardData }) {
   const downloadFoodLogSummary = async () => {
     const ExcelJS = await import("exceljs");
     const metrics = ["carbs", "proteins", "fats", "calories", "netCarbs", "fibre", "proteinNetCarbRatio"] as const;
+    const targetForSummary = dailyFoodLogSummary.length > 0
+      ? resolveTargetForDate(data.targetProfiles, dailyFoodLogSummary.at(-1)?.date ?? today)
+      : data.selectedUser.activeTargets;
     const metricValues = (metric: (typeof metrics)[number]) =>
       dailyFoodLogSummary.flatMap((summary) => {
         const value = summary[metric];
@@ -1272,6 +1275,24 @@ function Tracker({ data }: { data: DashboardData }) {
       cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
       cell.border = { top: border, bottom: border, left: border, right: border };
     });
+    const targetRow = sheet.addRow([
+      "Target / day",
+      targetForSummary?.targetCarbs ?? null,
+      targetForSummary?.targetProteins ?? null,
+      targetForSummary?.targetFats ?? null,
+      targetForSummary?.targetCalories ?? null,
+      null,
+      null,
+      null,
+    ]);
+    targetRow.eachCell((cell, index) => {
+      cell.border = { top: border, bottom: border, left: border, right: border };
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "E8F4E6" } };
+      cell.alignment = { horizontal: index === 1 ? "left" : "center" };
+      if (index === 1) cell.font = { bold: true, color: { argb: titleFill } };
+    });
+    for (const column of [2, 3, 4]) targetRow.getCell(column).numFmt = "0.0";
+    targetRow.getCell(5).numFmt = "0";
     [statisticRow("Maximum / day", (values) => Math.max(...values)), statisticRow("Average / day", (values) => average(values) ?? 0), statisticRow("Minimum / day", (values) => Math.min(...values))].forEach((row) => {
       const worksheetRow = sheet.addRow(row);
       worksheetRow.eachCell((cell, index) => {

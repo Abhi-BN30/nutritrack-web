@@ -23,6 +23,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "dotenv": "^17.4.2",
+    "exceljs": "^4.4.0",
     "jose": "^6.2.3",
     "lucide-react": "^1.24.0",
     "next": "16.2.10",
@@ -52,5 +53,3 @@
     "typescript": "^5"
   }
 }
-
-

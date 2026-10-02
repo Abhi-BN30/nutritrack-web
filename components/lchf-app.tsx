@@ -1219,7 +1219,8 @@ function Tracker({ data }: { data: DashboardData }) {
         };
       });
   }, [data.foodLogs]);
-  const downloadFoodLogSummary = () => {
+  const downloadFoodLogSummary = async () => {
+    const ExcelJS = await import("exceljs");
     const metrics = ["carbs", "proteins", "fats", "calories", "netCarbs", "fibre", "proteinNetCarbRatio"] as const;
     const metricValues = (metric: (typeof metrics)[number]) =>
       dailyFoodLogSummary.flatMap((summary) => {
@@ -1234,27 +1235,112 @@ function Tracker({ data }: { data: DashboardData }) {
       }),
     ];
 
-    downloadCsv("LCHF-food-log-summary.csv", [
-      ["Food log daily summary"],
-      ["User", data.selectedUser.name],
-      [],
-      ["Daily statistics", "Carbs (g)", "Proteins (g)", "Fats (g)", "Calories", "Net Carbs (g)", "Fibre (g)", "Protein / Net Carbs"],
-      statisticRow("Maximum / day", (values) => Math.max(...values)),
-      statisticRow("Average / day", (values) => average(values) ?? 0),
-      statisticRow("Minimum / day", (values) => Math.min(...values)),
-      [],
-      ["Date", "Carbs (g)", "Proteins (g)", "Fats (g)", "Calories", "Net Carbs (g)", "Fibre (g)", "Protein / Net Carbs"],
-      ...dailyFoodLogSummary.map((summary) => [
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = "NutriTrack";
+    workbook.created = new Date();
+
+    const sheet = workbook.addWorksheet("Food Log Summary", {
+      views: [{ state: "frozen", ySplit: 9 }],
+      properties: { defaultRowHeight: 19 },
+    });
+    const headers = ["Date", "Carbs (g)", "Proteins (g)", "Fats (g)", "Calories", "Net Carbs (g)", "Fibre (g)", "Protein / Net Carbs"];
+    const titleFill = "245B35";
+    const headerFill = "B85C38";
+    const lightFill = "F4F8F2";
+    const border = { style: "thin" as const, color: { argb: "D8E2D5" } };
+
+    sheet.mergeCells("A1:H1");
+    sheet.getCell("A1").value = "NutriTrack Food Log Daily Summary";
+    sheet.getCell("A1").font = { bold: true, size: 16, color: { argb: "FFFFFF" } };
+    sheet.getCell("A1").fill = { type: "pattern", pattern: "solid", fgColor: { argb: titleFill } };
+    sheet.getCell("A1").alignment = { horizontal: "center", vertical: "middle" };
+    sheet.getRow(1).height = 28;
+
+    sheet.mergeCells("A2:H2");
+    sheet.getCell("A2").value = `User: ${data.selectedUser.name} (${data.selectedUser.email})`;
+    sheet.getCell("A2").font = { italic: true, color: { argb: "4D5B4C" } };
+    sheet.getCell("A2").alignment = { horizontal: "center" };
+    sheet.mergeCells("A3:H3");
+    sheet.getCell("A3").value = `Generated: ${new Date().toLocaleDateString("en-IN")}`;
+    sheet.getCell("A3").font = { color: { argb: "6A7669" } };
+    sheet.getCell("A3").alignment = { horizontal: "center" };
+
+    const summaryHeaderRow = sheet.addRow(["Daily statistics", ...headers.slice(1)]);
+    summaryHeaderRow.eachCell((cell) => {
+      cell.font = { bold: true, color: { argb: "FFFFFF" } };
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: headerFill } };
+      cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
+      cell.border = { top: border, bottom: border, left: border, right: border };
+    });
+    [statisticRow("Maximum / day", (values) => Math.max(...values)), statisticRow("Average / day", (values) => average(values) ?? 0), statisticRow("Minimum / day", (values) => Math.min(...values))].forEach((row) => {
+      const worksheetRow = sheet.addRow(row);
+      worksheetRow.eachCell((cell, index) => {
+        cell.border = { top: border, bottom: border, left: border, right: border };
+        cell.alignment = { horizontal: index === 1 ? "left" : "center" };
+        if (index === 1) cell.font = { bold: true };
+      });
+    });
+
+    sheet.addRow([]);
+    const dailyHeaderRow = sheet.addRow(headers);
+    dailyHeaderRow.eachCell((cell) => {
+      cell.font = { bold: true, color: { argb: "FFFFFF" } };
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: headerFill } };
+      cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
+      cell.border = { top: border, bottom: border, left: border, right: border };
+    });
+
+    dailyFoodLogSummary.forEach((summary, index) => {
+      const row = sheet.addRow([
         summary.displayDate,
-        round(summary.carbs),
-        round(summary.proteins),
-        round(summary.fats),
-        round(summary.calories, 0),
-        summary.netCarbs === null ? null : round(summary.netCarbs),
-        summary.fibre === null ? null : round(summary.fibre),
-        summary.proteinNetCarbRatio === null ? null : round(summary.proteinNetCarbRatio, 2),
-      ]),
-    ]);
+        summary.carbs,
+        summary.proteins,
+        summary.fats,
+        summary.calories,
+        summary.netCarbs,
+        summary.fibre,
+        summary.proteinNetCarbRatio,
+      ]);
+      row.eachCell((cell, column) => {
+        cell.border = { top: border, bottom: border, left: border, right: border };
+        cell.alignment = { horizontal: column === 1 ? "left" : "center" };
+        if (index % 2 === 0) cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: lightFill } };
+      });
+      for (const column of [2, 3, 4, 6, 7, 8]) row.getCell(column).numFmt = "0.0";
+      row.getCell(5).numFmt = "0";
+    });
+
+    sheet.columns = [
+      { width: 16 },
+      { width: 13 },
+      { width: 15 },
+      { width: 12 },
+      { width: 13 },
+      { width: 16 },
+      { width: 12 },
+      { width: 22 },
+    ];
+
+    const firstDailyRow = 10;
+    const lastDailyRow = firstDailyRow + dailyFoodLogSummary.length - 1;
+    if (lastDailyRow >= firstDailyRow) {
+      sheet.addConditionalFormatting({
+        ref: `B${firstDailyRow}:B${lastDailyRow}`,
+        rules: [{ type: "colorScale", priority: 1, cfvo: [{ type: "min" }, { type: "max" }], color: [{ argb: "E6F4EA" }, { argb: "E7A59B" }] }],
+      });
+      sheet.addConditionalFormatting({
+        ref: `E${firstDailyRow}:E${lastDailyRow}`,
+        rules: [{ type: "colorScale", priority: 2, cfvo: [{ type: "min" }, { type: "max" }], color: [{ argb: "E6F4EA" }, { argb: "E7A59B" }] }],
+      });
+    }
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const url = URL.createObjectURL(new Blob([buffer as BlobPart], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "NutriTrack-food-log-summary.xlsx";
+    link.click();
+    URL.revokeObjectURL(url);
   };
   const visibleLogs = useMemo(() => {
     const keyword = search.trim().toLowerCase();
@@ -1386,7 +1472,7 @@ function Tracker({ data }: { data: DashboardData }) {
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <button type="button" onClick={() => downloadCsv("LCHF-meals-ingredients.csv", [["Date", "Dish", "Food item", "Qty", "Carbs", "Proteins", "Fats", "Fibre", "Calories", "Protein/Carb ratio"], ...visibleLogs.map((log) => [log.displayDate, log.dishName, log.foodItem, formatQuantityDisplay(log.quantityValue, log.quantityMetric), round(log.carbs), round(log.proteins), round(log.fats), log.fibre === null ? null : round(log.fibre), round(log.calories, 0), log.proteinCarbRatio === null ? "-" : round(log.proteinCarbRatio)])])} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]" aria-label="Download meals and ingredients table"><Download className="size-4" /></button>
-                  <button type="button" onClick={downloadFoodLogSummary} className="inline-flex items-center gap-2 rounded-md border border-[#d8e2d5] px-3 py-2 text-sm hover:bg-[#f4f7f2]" aria-label="Download food log summary">
+                  <button type="button" onClick={() => void downloadFoodLogSummary()} className="inline-flex items-center gap-2 rounded-md border border-[#d8e2d5] px-3 py-2 text-sm hover:bg-[#f4f7f2]" aria-label="Download styled food log summary">
                     <Download className="size-4" />
                     Summary
                   </button>

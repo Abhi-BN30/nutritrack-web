@@ -1481,10 +1481,15 @@ function Medical({ data }: { data: DashboardData }) {
               <h2 className="font-semibold">Biometric history</h2>
               <p className="text-sm text-[#6a7669]">Review, edit, or delete dated biometric records.</p>
             </div>
-            <button type="button" onClick={openAddMedicalModal} className="inline-flex items-center gap-2 rounded-md border border-[#d8e2d5] px-3 py-2 text-sm font-medium hover:bg-[#f4f7f2] sm:self-start">
-              <Plus className="size-4" />
-              Add entry
-            </button>
+            <div className="flex gap-2 sm:self-start">
+              <button type="button" onClick={() => downloadCsv("LCHF-medical-history.csv", [["Date", "Weight (kg)", "Height (cm)", "Waist (cm)", "Height / waist", "BMI", "BP High", "BP Low"], ...data.medicalRecords.map((record) => [record.displayDate, record.weight, record.height, record.waist, record.heightToWaistRatio == null ? null : round(record.heightToWaistRatio, 2), record.bmi, record.bpHigh, record.bpLow])])} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]" aria-label="Download medical history">
+                <Download className="size-4" />
+              </button>
+              <button type="button" onClick={openAddMedicalModal} className="inline-flex items-center gap-2 rounded-md border border-[#d8e2d5] px-3 py-2 text-sm font-medium hover:bg-[#f4f7f2]">
+                <Plus className="size-4" />
+                Add entry
+              </button>
+            </div>
           </div>
           <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3">
             {data.medicalRecords.length === 0 ? <p className="text-sm text-[#6a7669]">No medical records yet.</p> : data.medicalRecords.map((record) => (
@@ -1769,11 +1774,16 @@ function Graphs({ data }: { data: DashboardData }) {
             <div>
               <h2 className="font-semibold">Nutrition trend</h2>
             </div>
-            {latestNutrition ? (
-              <p className="text-xs text-[#6a7669]">
-                Latest in range: {latestNutrition.label} - {round(latestNutrition.calories, 0)} kcal
-              </p>
-            ) : null}
+            <div className="flex items-center gap-2">
+              {latestNutrition ? (
+                <p className="text-xs text-[#6a7669]">
+                  Latest in range: {latestNutrition.label} - {round(latestNutrition.calories, 0)} kcal
+                </p>
+              ) : null}
+              <button type="button" onClick={() => downloadCsv("LCHF-nutrition-graph-data.csv", [["Date", "Calories", "Carbs (g)", "Proteins (g)", "Fats (g)"], ...filteredNutritionSeries.map((entry) => [entry.label, entry.calories, entry.carbs, entry.proteins, entry.fats])])} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]" aria-label="Download nutrition graph data">
+                <Download className="size-4" />
+              </button>
+            </div>
           </div>
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
             <MiniMetric label="Avg calories/day" value={avgCalories === null ? "-" : `${round(avgCalories, 0)} kcal`} helper="" />
@@ -1802,11 +1812,16 @@ function Graphs({ data }: { data: DashboardData }) {
             <div>
               <h2 className="font-semibold">Biometric trend</h2>
             </div>
-            {latestMedical ? (
-              <p className="text-xs text-[#6a7669]">
-                Latest in range: {latestMedical.label} - BMI {round(latestMedical.bmi)}
-              </p>
-            ) : null}
+            <div className="flex items-center gap-2">
+              {latestMedical ? (
+                <p className="text-xs text-[#6a7669]">
+                  Latest in range: {latestMedical.label} - BMI {round(latestMedical.bmi)}
+                </p>
+              ) : null}
+              <button type="button" onClick={() => downloadCsv("LCHF-biometric-graph-data.csv", [["Date", "BMI", "Weight (kg)", "BP High", "BP Low"], ...filteredBiometricSeries.map((entry) => [entry.label, entry.bmi, entry.weight, entry.bpHigh, entry.bpLow])])} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]" aria-label="Download biometric graph data">
+                <Download className="size-4" />
+              </button>
+            </div>
           </div>
           <div className="mt-4 grid gap-3 sm:grid-cols-2 2xl:grid-cols-3">
             <MiniMetric label="Avg BMI" value={avgBmi === null ? "-" : round(avgBmi)} helper="" />

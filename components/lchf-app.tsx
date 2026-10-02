@@ -106,6 +106,7 @@ type FoodLog = {
   proteins: number;
   fats: number;
   calories: number;
+  fibre: number | null;
   proteinCarbRatio: number | null;
   foodItemId: string;
   foodChoice: string;
@@ -1168,6 +1169,93 @@ function Tracker({ data }: { data: DashboardData }) {
   };
 
   const selectedDateLogs = useMemo(() => data.foodLogs.filter((log) => log.date === selectedDate), [data.foodLogs, selectedDate]);
+  const dailyFoodLogSummary = useMemo(() => {
+    const summaries = new Map<string, {
+      date: string;
+      displayDate: string;
+      carbs: number;
+      proteins: number;
+      fats: number;
+      calories: number;
+      fibre: number;
+      hasUnknownFibre: boolean;
+    }>();
+
+    for (const log of data.foodLogs) {
+      const summary = summaries.get(log.date) ?? {
+        date: log.date,
+        displayDate: log.displayDate,
+        carbs: 0,
+        proteins: 0,
+        fats: 0,
+        calories: 0,
+        fibre: 0,
+        hasUnknownFibre: false,
+      };
+
+      summary.carbs += log.carbs;
+      summary.proteins += log.proteins;
+      summary.fats += log.fats;
+      summary.calories += log.calories;
+      if (log.fibre === null) {
+        summary.hasUnknownFibre = true;
+      } else {
+        summary.fibre += log.fibre;
+      }
+      summaries.set(log.date, summary);
+    }
+
+    return Array.from(summaries.values())
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .map((summary) => {
+        const fibre = summary.hasUnknownFibre ? null : summary.fibre;
+        const netCarbs = fibre === null ? null : summary.carbs - fibre;
+
+        return {
+          ...summary,
+          fibre,
+          netCarbs,
+          proteinNetCarbRatio: netCarbs === null || netCarbs <= 0 ? null : summary.proteins / netCarbs,
+        };
+      });
+  }, [data.foodLogs]);
+  const downloadFoodLogSummary = () => {
+    const metrics = ["carbs", "proteins", "fats", "calories", "netCarbs", "fibre", "proteinNetCarbRatio"] as const;
+    const metricValues = (metric: (typeof metrics)[number]) =>
+      dailyFoodLogSummary.flatMap((summary) => {
+        const value = summary[metric];
+        return typeof value === "number" ? [value] : [];
+      });
+    const statisticRow = (label: string, calculate: (values: number[]) => number) => [
+      label,
+      ...metrics.map((metric) => {
+        const values = metricValues(metric);
+        return values.length ? round(calculate(values), metric === "calories" ? 0 : 2) : null;
+      }),
+    ];
+
+    downloadCsv("LCHF-food-log-summary.csv", [
+      ["Food log daily summary"],
+      ["User", data.selectedUser.name],
+      [],
+      ["Daily statistics", "Carbs (g)", "Proteins (g)", "Fats (g)", "Calories", "Net Carbs (g)", "Fibre (g)", "Protein / Net Carbs"],
+      statisticRow("Maximum / day", (values) => Math.max(...values)),
+      statisticRow("Average / day", (values) => average(values) ?? 0),
+      statisticRow("Minimum / day", (values) => Math.min(...values)),
+      [],
+      ["Date", "Carbs (g)", "Proteins (g)", "Fats (g)", "Calories", "Net Carbs (g)", "Fibre (g)", "Protein / Net Carbs"],
+      ...dailyFoodLogSummary.map((summary) => [
+        summary.displayDate,
+        round(summary.carbs),
+        round(summary.proteins),
+        round(summary.fats),
+        round(summary.calories, 0),
+        summary.netCarbs === null ? null : round(summary.netCarbs),
+        summary.fibre === null ? null : round(summary.fibre),
+        summary.proteinNetCarbRatio === null ? null : round(summary.proteinNetCarbRatio, 2),
+      ]),
+    ]);
+  };
   const visibleLogs = useMemo(() => {
     const keyword = search.trim().toLowerCase();
     const base = showAllLogs ? data.foodLogs : selectedDateLogs;
@@ -1297,7 +1385,11 @@ function Tracker({ data }: { data: DashboardData }) {
                   <h2 className="font-semibold">Meals and Ingredients</h2>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <button type="button" onClick={() => downloadCsv("LCHF-meals-ingredients.csv", [["Date", "Dish", "Food item", "Qty", "Carbs", "Proteins", "Fats", "Calories", "Protein/Carb ratio"], ...visibleLogs.map((log) => [log.displayDate, log.dishName, log.foodItem, formatQuantityDisplay(log.quantityValue, log.quantityMetric), round(log.carbs), round(log.proteins), round(log.fats), round(log.calories, 0), log.proteinCarbRatio === null ? "-" : round(log.proteinCarbRatio)])])} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]" aria-label="Download meals and ingredients table"><Download className="size-4" /></button>
+                  <button type="button" onClick={() => downloadCsv("LCHF-meals-ingredients.csv", [["Date", "Dish", "Food item", "Qty", "Carbs", "Proteins", "Fats", "Fibre", "Calories", "Protein/Carb ratio"], ...visibleLogs.map((log) => [log.displayDate, log.dishName, log.foodItem, formatQuantityDisplay(log.quantityValue, log.quantityMetric), round(log.carbs), round(log.proteins), round(log.fats), log.fibre === null ? null : round(log.fibre), round(log.calories, 0), log.proteinCarbRatio === null ? "-" : round(log.proteinCarbRatio)])])} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]" aria-label="Download meals and ingredients table"><Download className="size-4" /></button>
+                  <button type="button" onClick={downloadFoodLogSummary} className="inline-flex items-center gap-2 rounded-md border border-[#d8e2d5] px-3 py-2 text-sm hover:bg-[#f4f7f2]" aria-label="Download food log summary">
+                    <Download className="size-4" />
+                    Summary
+                  </button>
                   <button type="button" onClick={() => setShowAllLogs(false)} className={`rounded-md border px-3 py-2 text-sm ${!showAllLogs ? "border-[#245b35] bg-[#edf7ec] text-[#245b35]" : "border-[#d8e2d5] hover:bg-[#f4f7f2]"}`}>Selected day only</button>
                   <button type="button" onClick={() => setShowAllLogs(true)} className={`rounded-md border px-3 py-2 text-sm ${showAllLogs ? "border-[#245b35] bg-[#edf7ec] text-[#245b35]" : "border-[#d8e2d5] hover:bg-[#f4f7f2]"}`}>Show all logs</button>
                 </div>
@@ -1344,6 +1436,7 @@ function Tracker({ data }: { data: DashboardData }) {
                     <p><span className="font-medium text-[#172117]">Carbs:</span> {round(log.carbs)}g</p>
                     <p><span className="font-medium text-[#172117]">Proteins:</span> {round(log.proteins)}g</p>
                     <p><span className="font-medium text-[#172117]">Fats:</span> {round(log.fats)}g</p>
+                    <p><span className="font-medium text-[#172117]">Fibre:</span> {log.fibre === null ? "—" : `${round(log.fibre)}g`}</p>
                     <p><span className="font-medium text-[#172117]">Calories:</span> {round(log.calories, 0)}</p>
                   </div>
                   <p className="mt-3 text-sm text-[#4d5b4c]"><span className="font-medium text-[#172117]">Protein/Carb ratio:</span> {log.proteinCarbRatio === null ? "-" : round(log.proteinCarbRatio)}</p>
@@ -1351,16 +1444,16 @@ function Tracker({ data }: { data: DashboardData }) {
               ))}
             </div>
             <div className="hidden overflow-x-auto lg:block">
-              <table className="w-full min-w-[920px] text-sm">
+              <table className="w-full min-w-[1000px] text-sm">
                 <thead className="bg-[#f4f8f2] text-left">
                   <tr>
-                    <th className="p-3">Date</th><th className="p-3">Dish</th><th className="p-3">Food item</th><th className="p-3">Qty</th><th className="p-3">Carbs</th><th className="p-3">Proteins</th><th className="p-3">Fats</th><th className="p-3">Calories</th><th className="p-3">Protein/Carb ratio</th><th className="p-3">Actions</th>
+                    <th className="p-3">Date</th><th className="p-3">Dish</th><th className="p-3">Food item</th><th className="p-3">Qty</th><th className="p-3">Carbs</th><th className="p-3">Proteins</th><th className="p-3">Fats</th><th className="p-3">Fibre</th><th className="p-3">Calories</th><th className="p-3">Protein/Carb ratio</th><th className="p-3">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {visibleLogs.length === 0 ? <tr><td colSpan={10} className="p-5 text-center text-sm text-[#6a7669]">No food logs found.</td></tr> : visibleLogs.map((log) => (
+                  {visibleLogs.length === 0 ? <tr><td colSpan={11} className="p-5 text-center text-sm text-[#6a7669]">No food logs found.</td></tr> : visibleLogs.map((log) => (
                     <tr key={log.id} className="border-t border-[#eef3ec]">
-                      <td className="p-3">{log.displayDate}</td><td className="p-3 font-medium">{log.dishName}</td><td className="p-3">{log.foodItem}</td><td className="p-3">{formatQuantityDisplay(log.quantityValue, log.quantityMetric)}</td><td className="p-3">{round(log.carbs)}g</td><td className="p-3">{round(log.proteins)}g</td><td className="p-3">{round(log.fats)}g</td><td className="p-3">{round(log.calories, 0)}</td><td className="p-3">{log.proteinCarbRatio === null ? "-" : round(log.proteinCarbRatio)}</td>
+                      <td className="p-3">{log.displayDate}</td><td className="p-3 font-medium">{log.dishName}</td><td className="p-3">{log.foodItem}</td><td className="p-3">{formatQuantityDisplay(log.quantityValue, log.quantityMetric)}</td><td className="p-3">{round(log.carbs)}g</td><td className="p-3">{round(log.proteins)}g</td><td className="p-3">{round(log.fats)}g</td><td className="p-3">{log.fibre === null ? "—" : `${round(log.fibre)}g`}</td><td className="p-3">{round(log.calories, 0)}</td><td className="p-3">{log.proteinCarbRatio === null ? "-" : round(log.proteinCarbRatio)}</td>
                       <td className="p-3"><div className="flex gap-2"><button type="button" onClick={() => openEditLogModal(log)} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]"><Pencil className="size-4" /></button><form action={deleteFoodLog}><input type="hidden" name="id" value={log.id} /><button className="rounded-md border border-[#ead0cb] p-2 text-[#a13f32] hover:bg-[#fff4f2]"><Trash2 className="size-4" /></button></form></div></td>
                     </tr>
                   ))}

@@ -46,6 +46,7 @@ Stores daily intake rows for a user.
 - `dishName`
 - `quantityGms`
 - calculated nutrition snapshot
+- `fibre` nutrition snapshot
 - linked `foodItemId`
 - linked `userId`
 

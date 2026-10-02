@@ -590,7 +590,7 @@ export async function saveFoodLog(_state: ActionState, formData: FormData): Prom
   }
 
   let nutrientsSource:
-    | { id: string; carbohydrates: number; proteins: number; fats: number; calories: number; source: "MASTER" | "PERSONAL" }
+    | { id: string; carbohydrates: number; proteins: number; fats: number; calories: number; fibre: number | null; source: "MASTER" | "PERSONAL" }
     | null = null;
 
   if (parsedFoodChoice.source === "MASTER") {
@@ -602,6 +602,7 @@ export async function saveFoodLog(_state: ActionState, formData: FormData): Prom
         proteins: food.proteins,
         fats: food.fats,
         calories: food.calories,
+        fibre: food.fibre,
         source: "MASTER",
       };
     }
@@ -617,6 +618,7 @@ export async function saveFoodLog(_state: ActionState, formData: FormData): Prom
         proteins: personalFood.proteins,
         fats: personalFood.fats,
         calories: personalFood.calories,
+        fibre: null,
         source: "PERSONAL",
       };
     }
@@ -631,6 +633,7 @@ export async function saveFoodLog(_state: ActionState, formData: FormData): Prom
   const carbs = nutrientsSource.carbohydrates * scale;
   const fats = nutrientsSource.fats * scale;
   const calories = nutrientsSource.calories * scale;
+  const fibre = nutrientsSource.fibre === null ? null : nutrientsSource.fibre * scale;
   const proteinCarbRatio = calculateProteinCarbRatio(proteins, carbs);
 
   try {
@@ -654,6 +657,7 @@ export async function saveFoodLog(_state: ActionState, formData: FormData): Prom
           proteins,
           fats,
           calories,
+          fibre,
           proteinCarbRatio,
         },
       });
@@ -675,6 +679,7 @@ export async function saveFoodLog(_state: ActionState, formData: FormData): Prom
         proteins,
         fats,
         calories,
+        fibre,
         proteinCarbRatio,
       },
     });

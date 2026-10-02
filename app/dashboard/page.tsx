@@ -289,6 +289,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       proteins: log.proteins,
       fats: log.fats,
       calories: log.calories,
+      fibre: log.fibre,
       proteinCarbRatio: log.proteinCarbRatio,
       foodItemId: log.foodItemId ?? log.personalFoodItemId ?? "",
       foodChoice: log.foodItemId ? `MASTER:${log.foodItemId}` : `PERSONAL:${log.personalFoodItemId ?? ""}`,

@@ -114,6 +114,7 @@ model FoodLog {
   proteins           Float
   fats               Float
   calories           Float
+  fibre              Float?
   proteinCarbRatio   Float?
   createdAt          DateTime          @default(now())
   user               User              @relation(fields: [userId], references: [id], onDelete: Cascade)

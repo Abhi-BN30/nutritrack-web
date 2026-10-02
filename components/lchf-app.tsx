@@ -994,7 +994,7 @@ function Shell({ data, tab, setTab, children }: { data: DashboardData; tab: Tab;
               <div className="grid size-10 place-items-center rounded-lg bg-[#245b35] font-bold text-white">L</div>
               <div>
                 <p className="font-semibold">LCHF</p>
-                <p className="text-xs text-[#6a7669]">{data.currentUser.role === "ADMIN" ? "Admin workspace" : "User workspace"}</p>
+                <p className="text-xs text-[#6a7669]">{data.currentUser.role === "ADMIN" ? "Admin Workspace" : "User Workspace"}</p>
               </div>
             </div>
 
@@ -1012,7 +1012,7 @@ function Shell({ data, tab, setTab, children }: { data: DashboardData; tab: Tab;
 
             <div className="hidden items-center gap-2 lg:flex">
               <InstallAppButton compactLabel="Install" />
-              <form action={signOut}><button className="flex h-10 items-center gap-2 rounded-md border border-[#d8e2d5] px-3 text-sm font-medium hover:bg-[#edf3ea]"><LogOut className="size-4" />Sign out</button></form>
+              <form action={signOut}><button className="flex h-10 items-center gap-2 rounded-md border border-[#d8e2d5] px-3 text-sm font-medium hover:bg-[#edf3ea]"><LogOut className="size-4" />Sign Out</button></form>
             </div>
           </div>
 
@@ -1046,7 +1046,7 @@ function Shell({ data, tab, setTab, children }: { data: DashboardData; tab: Tab;
                 <div className="flex flex-col gap-2">
                   <InstallAppButton compactLabel="Install" className="w-full" />
                   <form action={signOut}>
-                    <button className="flex h-10 w-full items-center gap-2 rounded-md border border-[#d8e2d5] px-3 text-sm font-medium hover:bg-white"><LogOut className="size-4" />Sign out</button>
+                    <button className="flex h-10 w-full items-center gap-2 rounded-md border border-[#d8e2d5] px-3 text-sm font-medium hover:bg-white"><LogOut className="size-4" />Sign Out</button>
                   </form>
                 </div>
               </div>
@@ -1067,7 +1067,7 @@ function Shell({ data, tab, setTab, children }: { data: DashboardData; tab: Tab;
           </div>
           <div className="min-w-0 rounded-lg border border-[#dbe5d8] bg-white p-4">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#4f7f5d]">Page highlights</p>
-            <h2 className="mt-1 font-semibold">{activeTab.label} metrics</h2>
+            <h2 className="mt-1 font-semibold">{activeTab.label} Metrics</h2>
             {tab === "tracker" ? (
               <div className="mt-4 space-y-3">
                 <div className="rounded-lg border border-[#e4ece1] bg-[#f9fbf8] px-3 py-3 sm:px-4">
@@ -1438,7 +1438,7 @@ function Tracker({ data }: { data: DashboardData }) {
             <div className="rounded-lg border border-[#dbe5d8] bg-white p-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h2 className="font-semibold">Daily tracker</h2>
+                  <h2 className="font-semibold">Daily Tracker</h2>
                 </div>
                 <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-end">
                   <div className="w-full sm:w-52">
@@ -1489,38 +1489,38 @@ function Tracker({ data }: { data: DashboardData }) {
             <div className="border-b border-[#e4ece1] p-4">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 <div>
-                  <h2 className="font-semibold">Meals and Ingredients</h2>
+                  <h2 className="font-semibold">Meals & Ingredients</h2>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <button type="button" onClick={() => downloadCsv("LCHF-meals-ingredients.csv", [["Date", "Dish", "Food item", "Qty", "Carbs", "Proteins", "Fats", "Fibre", "Calories", "Protein/Carb ratio"], ...visibleLogs.map((log) => [log.displayDate, log.dishName, log.foodItem, formatQuantityDisplay(log.quantityValue, log.quantityMetric), round(log.carbs), round(log.proteins), round(log.fats), log.fibre === null ? null : round(log.fibre), round(log.calories, 0), log.proteinCarbRatio === null ? "-" : round(log.proteinCarbRatio)])])} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]" aria-label="Download meals and ingredients table"><Download className="size-4" /></button>
+                  <button type="button" onClick={() => downloadCsv("LCHF-meals-ingredients.csv", [["Date", "Dish", "Food item", "Qty", "Carbs", "Proteins", "Fats", "Fibre", "Calories", "Protein/Carb Ratio"], ...visibleLogs.map((log) => [log.displayDate, log.dishName, log.foodItem, formatQuantityDisplay(log.quantityValue, log.quantityMetric), round(log.carbs), round(log.proteins), round(log.fats), log.fibre === null ? null : round(log.fibre), round(log.calories, 0), log.proteinCarbRatio === null ? "-" : round(log.proteinCarbRatio)])])} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]" aria-label="Download meals and ingredients table"><Download className="size-4" /></button>
                   <button type="button" onClick={() => void downloadFoodLogSummary()} className="inline-flex items-center gap-2 rounded-md border border-[#d8e2d5] px-3 py-2 text-sm hover:bg-[#f4f7f2]" aria-label="Download styled food log summary">
                     <Download className="size-4" />
                     Summary
                   </button>
-                  <button type="button" onClick={() => setShowAllLogs(false)} className={`rounded-md border px-3 py-2 text-sm ${!showAllLogs ? "border-[#245b35] bg-[#edf7ec] text-[#245b35]" : "border-[#d8e2d5] hover:bg-[#f4f7f2]"}`}>Selected day only</button>
-                  <button type="button" onClick={() => setShowAllLogs(true)} className={`rounded-md border px-3 py-2 text-sm ${showAllLogs ? "border-[#245b35] bg-[#edf7ec] text-[#245b35]" : "border-[#d8e2d5] hover:bg-[#f4f7f2]"}`}>Show all logs</button>
+                  <button type="button" onClick={() => setShowAllLogs(false)} className={`rounded-md border px-3 py-2 text-sm ${!showAllLogs ? "border-[#245b35] bg-[#edf7ec] text-[#245b35]" : "border-[#d8e2d5] hover:bg-[#f4f7f2]"}`}>Selected Day Only</button>
+                  <button type="button" onClick={() => setShowAllLogs(true)} className={`rounded-md border px-3 py-2 text-sm ${showAllLogs ? "border-[#245b35] bg-[#edf7ec] text-[#245b35]" : "border-[#d8e2d5] hover:bg-[#f4f7f2]"}`}>Show All Logs</button>
                 </div>
               </div>
               <TableControls
                 searchValue={search}
                 onSearchChange={setSearch}
-                searchPlaceholder="Search dish or food item"
+                searchPlaceholder="Search Dish or Food Item"
                 filterValue={logFilter}
                 onFilterChange={(value) => setLogFilter(value as "all" | "withRatio" | "highProtein" | "highCalories")}
                 filterOptions={[
-                  { value: "all", label: "All entries" },
-                  { value: "withRatio", label: "Has P/C ratio" },
-                  { value: "highProtein", label: "High protein" },
-                  { value: "highCalories", label: "High calorie" },
+                  { value: "all", label: "All Entries" },
+                  { value: "withRatio", label: "Has P/C Ratio" },
+                  { value: "highProtein", label: "High Protein" },
+                  { value: "highCalories", label: "High Calorie" },
                 ]}
                 sortValue={logSort}
                 onSortChange={(value) => setLogSort(value as "date_desc" | "date_asc" | "calories_desc" | "proteins_desc" | "carbs_desc")}
                 sortOptions={[
-                  { value: "date_desc", label: "Newest first" },
-                  { value: "date_asc", label: "Oldest first" },
-                  { value: "calories_desc", label: "Calories high to low" },
-                  { value: "proteins_desc", label: "Proteins high to low" },
-                  { value: "carbs_desc", label: "Carbs high to low" },
+                  { value: "date_desc", label: "Newest First" },
+                  { value: "date_asc", label: "Oldest First" },
+                  { value: "calories_desc", label: "Calories High to Low" },
+                  { value: "proteins_desc", label: "Proteins High to Low" },
+                  { value: "carbs_desc", label: "Carbs High to Low" },
                 ]}
               />
             </div>
@@ -1546,7 +1546,7 @@ function Tracker({ data }: { data: DashboardData }) {
                     <p><span className="font-medium text-[#172117]">Fibre:</span> {log.fibre === null ? "—" : `${round(log.fibre)}g`}</p>
                     <p><span className="font-medium text-[#172117]">Calories:</span> {round(log.calories, 0)}</p>
                   </div>
-                  <p className="mt-3 text-sm text-[#4d5b4c]"><span className="font-medium text-[#172117]">Protein/Carb ratio:</span> {log.proteinCarbRatio === null ? "-" : round(log.proteinCarbRatio)}</p>
+                  <p className="mt-3 text-sm text-[#4d5b4c]"><span className="font-medium text-[#172117]">Protein/Carb Ratio:</span> {log.proteinCarbRatio === null ? "-" : round(log.proteinCarbRatio)}</p>
                 </article>
               ))}
             </div>
@@ -1658,18 +1658,18 @@ function Medical({ data }: { data: DashboardData }) {
     <>
       <div className="space-y-4">
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <StatCard label="Latest BMI" value={data.medicalRecords[0] ? round(data.medicalRecords[0].bmi) : "-"} helper="Most recent record" icon={HeartPulse} />
+          <StatCard label="Latest BMI" value={data.medicalRecords[0] ? round(data.medicalRecords[0].bmi) : "-"} helper="Most Recent Record" icon={HeartPulse} />
           <StatCard label="Latest BP" value={data.medicalRecords[0] ? `${round(data.medicalRecords[0].bpHigh, 0)}/${round(data.medicalRecords[0].bpLow, 0)}` : "-"} helper="Systolic / Diastolic" icon={Activity} />
-          <StatCard label="Records" value={`${data.medicalRecords.length}`} helper="Total biometric entries" icon={Database} />
+          <StatCard label="Records" value={`${data.medicalRecords.length}`} helper="Total Biometric Entries" icon={Database} />
           <div className="rounded-lg border border-[#dbe5d8] bg-white p-4">
             <div className="flex h-full flex-col justify-between gap-3">
               <div>
-                <p className="text-sm font-medium text-[#5b685a]">Biometric actions</p>
+                <p className="text-sm font-medium text-[#5b685a]">Biometric Actions</p>
                 <p className="mt-1 text-xs text-[#6a7669]">Add a new entry or update an existing dated record.</p>
               </div>
               <button type="button" onClick={openAddMedicalModal} className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-[#245b35] px-4 text-sm font-semibold text-white hover:bg-[#1d4a2b]">
                 <Plus className="size-4" />
-                Add entry
+                Add Entry
               </button>
             </div>
           </div>
@@ -1678,17 +1678,17 @@ function Medical({ data }: { data: DashboardData }) {
         <section className="min-w-0 rounded-lg border border-[#dbe5d8] bg-white">
           <div className="flex flex-col gap-3 border-b border-[#e4ece1] p-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className="font-semibold">Biometric history</h2>
-              <p className="text-sm text-[#6a7669]">Review, edit, or delete dated biometric records.</p>
+              <h2 className="font-semibold">Biometric History</h2>
+              <p className="text-sm text-[#6a7669]">Review, Edit, or Delete dated Biometric Records.</p>
             </div>
             <div className="flex gap-2 sm:self-start">
               <button type="button" onClick={() => downloadCsv("LCHF-medical-history.csv", [["Date", "Weight (kg)", "Height (cm)", "Waist (cm)", "Height / waist", "BMI", "BP High", "BP Low"], ...data.medicalRecords.map((record) => [record.displayDate, record.weight, record.height, record.waist, record.heightToWaistRatio == null ? null : round(record.heightToWaistRatio, 2), record.bmi, record.bpHigh, record.bpLow])])} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]" aria-label="Download medical history">
                 <Download className="size-4" />
               </button>
-              <button type="button" onClick={openAddMedicalModal} className="inline-flex items-center gap-2 rounded-md border border-[#d8e2d5] px-3 py-2 text-sm font-medium hover:bg-[#f4f7f2]">
+              {/* <button type="button" onClick={openAddMedicalModal} className="inline-flex items-center gap-2 rounded-md border border-[#d8e2d5] px-3 py-2 text-sm font-medium hover:bg-[#f4f7f2]">
                 <Plus className="size-4" />
                 Add entry
-              </button>
+              </button> */}
             </div>
           </div>
           <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -1888,7 +1888,7 @@ function Graphs({ data }: { data: DashboardData }) {
       <section className="rounded-lg border border-[#dbe5d8] bg-white p-4">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
   <div>
-    <h2 className="font-semibold">Graph range and filters</h2>
+    <h2 className="font-semibold">Graph Range and Filters</h2>
     {/* <p className="mt-1 text-sm text-[#6a7669]">
       Select a preset or a custom date range to refresh both nutrition and biometric charts.
     </p>
@@ -1972,7 +1972,7 @@ function Graphs({ data }: { data: DashboardData }) {
         <section className="rounded-lg border border-[#dbe5d8] bg-white p-4">
           <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h2 className="font-semibold">Nutrition trend</h2>
+              <h2 className="font-semibold">Nutrition Trend</h2>
             </div>
             <div className="flex items-center gap-2">
               {latestNutrition ? (
@@ -1999,10 +1999,10 @@ function Graphs({ data }: { data: DashboardData }) {
             </div>
           ) : (
             <div className="mt-5 grid gap-4 xl:grid-cols-2">
-              <SingleValueChart title="Calories trend" data={nutritionChartData} dataKey="calories" color="#1b4965" denominator=" kcal" tickFormatter={(value) => `${Math.round(value)}`} labelFormatter={(value) => `${Math.round(Number(value))} kcal`} valueLabelKey="caloriesLabel" />
-              <SingleValueChart title="Carbs trend" data={nutritionChartData} dataKey="carbs" color="#4f7f5d" denominator=" g" tickFormatter={(value) => `${value}g`} labelFormatter={(value) => `${round(Number(value))} g`} valueLabelKey="carbsLabel" />
-              <SingleValueChart title="Proteins trend" data={nutritionChartData} dataKey="proteins" color="#245b35" denominator=" g" tickFormatter={(value) => `${value}g`} labelFormatter={(value) => `${round(Number(value))} g`} valueLabelKey="proteinsLabel" />
-              <SingleValueChart title="Fats trend" data={nutritionChartData} dataKey="fats" color="#c78b46" denominator=" g" tickFormatter={(value) => `${value}g`} labelFormatter={(value) => `${round(Number(value))} g`} valueLabelKey="fatsLabel" />
+              <SingleValueChart title="Calories Trend" data={nutritionChartData} dataKey="calories" color="#1b4965" denominator=" kcal" tickFormatter={(value) => `${Math.round(value)}`} labelFormatter={(value) => `${Math.round(Number(value))} kcal`} valueLabelKey="caloriesLabel" />
+              <SingleValueChart title="Carbs Trend" data={nutritionChartData} dataKey="carbs" color="#4f7f5d" denominator=" g" tickFormatter={(value) => `${value}g`} labelFormatter={(value) => `${round(Number(value))} g`} valueLabelKey="carbsLabel" />
+              <SingleValueChart title="Proteins Trend" data={nutritionChartData} dataKey="proteins" color="#245b35" denominator=" g" tickFormatter={(value) => `${value}g`} labelFormatter={(value) => `${round(Number(value))} g`} valueLabelKey="proteinsLabel" />
+              <SingleValueChart title="Fats Trend" data={nutritionChartData} dataKey="fats" color="#c78b46" denominator=" g" tickFormatter={(value) => `${value}g`} labelFormatter={(value) => `${round(Number(value))} g`} valueLabelKey="fatsLabel" />
             </div>
           )}
         </section>
@@ -2010,7 +2010,7 @@ function Graphs({ data }: { data: DashboardData }) {
         <section className="rounded-lg border border-[#dbe5d8] bg-white p-4">
           <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h2 className="font-semibold">Biometric trend</h2>
+              <h2 className="font-semibold">Biometric Trend</h2>
             </div>
             <div className="flex items-center gap-2">
               {latestMedical ? (
@@ -2035,11 +2035,11 @@ function Graphs({ data }: { data: DashboardData }) {
             </div>
           ) : (
             <div className="mt-5 grid gap-4 xl:grid-cols-2">
-              <SingleValueChart title="BMI trend" data={biometricChartData} dataKey="bmi" color="#245b35" denominator="" tickFormatter={(value) => `${value}`} labelFormatter={(value) => `${round(Number(value))}`} valueLabelKey="bmiLabel" />
-              <SingleValueChart title="Weight trend" data={biometricChartData} dataKey="weight" color="#4f7f5d" denominator=" kg" tickFormatter={(value) => `${value}`} labelFormatter={(value) => `${round(Number(value))} kg`} valueLabelKey="weightLabel" />
+              <SingleValueChart title="BMI Trend" data={biometricChartData} dataKey="bmi" color="#245b35" denominator="" tickFormatter={(value) => `${value}`} labelFormatter={(value) => `${round(Number(value))}`} valueLabelKey="bmiLabel" />
+              <SingleValueChart title="Weight Trend" data={biometricChartData} dataKey="weight" color="#4f7f5d" denominator=" kg" tickFormatter={(value) => `${value}`} labelFormatter={(value) => `${round(Number(value))} kg`} valueLabelKey="weightLabel" />
               <section className="rounded-lg border border-[#dbe5d8] bg-white p-4 xl:col-span-2">
                 <div className="mb-3">
-                  <h3 className="font-semibold">Blood pressure trend</h3>
+                  <h3 className="font-semibold">Blood Pressure Trend</h3>
                 </div>
                 <div className="h-[300px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
@@ -2212,7 +2212,7 @@ function DatabaseTab({ data }: { data: DashboardData }) {
             <div className="rounded-lg border border-[#dbe5d8] bg-white p-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h2 className="font-semibold">Master food table</h2>
+                  <h2 className="font-semibold">Master Food Table</h2>
                   <p className="mt-1 text-sm text-[#6a7669]">Only admins can maintain the shared master nutrition list.</p>
                 </div>
                 <button type="button" onClick={openAddMasterModal} className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-[#245b35] px-4 text-sm font-semibold text-white hover:bg-[#1d4a2b]">
@@ -2243,11 +2243,11 @@ function DatabaseTab({ data }: { data: DashboardData }) {
           <section className="min-w-0 rounded-lg border border-[#dbe5d8] bg-white">
             <div className="flex items-center justify-between border-b border-[#e4ece1] p-4">
               <div>
-                <h2 className="font-semibold">Master food items</h2>
+                <h2 className="font-semibold">Master food Items</h2>
                 <p className="text-sm text-[#6a7669]">Shared list visible to all users.</p>
               </div>
               <div className="flex items-center gap-2">
-                <button onClick={() => downloadCsv("LCHF-food-master.csv", [["Item", "Carbohydrates", "Proteins", "Fats", "Fibre", "Calories"], ...filteredFoodItems.map((item) => [item.itemName, item.carbohydrates, item.proteins, item.fats, item.fibre, item.calories])])} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]" aria-label="Download master food items"><Download className="size-4" /></button>
+                <button onClick={() => downloadCsv("LCHF-food-master.csv", [["Item", "Carbohydrates", "Proteins", "Fats", "Fibre", "Calories"], ...filteredFoodItems.map((item) => [item.itemName, item.carbohydrates, item.proteins, item.fats, item.fibre, item.calories])])} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]" aria-label="Download master food Items"><Download className="size-4" /></button>
                 <button type="button" onClick={() => setMasterTableExpanded((value) => !value)} className="inline-flex items-center gap-2 rounded-md border border-[#d8e2d5] px-3 py-2 text-sm font-medium hover:bg-[#f4f7f2]">{masterTableExpanded ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}{masterTableExpanded ? "Collapse" : "Expand"}</button>
               </div>
             </div>
@@ -2256,23 +2256,23 @@ function DatabaseTab({ data }: { data: DashboardData }) {
               <TableControls
                 searchValue={foodSearch}
                 onSearchChange={setFoodSearch}
-                searchPlaceholder="Search master food item"
+                searchPlaceholder="Search Master Food Item"
                 filterValue={foodFilter}
                 onFilterChange={(value) => setFoodFilter(value as "all" | "highProtein" | "highCalories" | "lowCarb")}
                 filterOptions={[
-                  { value: "all", label: "All foods" },
-                  { value: "highProtein", label: "High protein" },
-                  { value: "highCalories", label: "High calorie" },
-                  { value: "lowCarb", label: "Low carb" },
+                  { value: "all", label: "All Foods" },
+                  { value: "highProtein", label: "High Protein" },
+                  { value: "highCalories", label: "High Calorie" },
+                  { value: "lowCarb", label: "Low Carb" },
                 ]}
                 sortValue={foodSort}
                 onSortChange={(value) => setFoodSort(value as "name_asc" | "name_desc" | "calories_desc" | "proteins_desc" | "carbs_asc")}
                 sortOptions={[
                   { value: "name_asc", label: "Name A to Z" },
                   { value: "name_desc", label: "Name Z to A" },
-                  { value: "calories_desc", label: "Calories high to low" },
-                  { value: "proteins_desc", label: "Proteins high to low" },
-                  { value: "carbs_asc", label: "Carbs low to high" },
+                  { value: "calories_desc", label: "Calories High to Low" },
+                  { value: "proteins_desc", label: "Proteins High to Low" },
+                  { value: "carbs_asc", label: "Carbs Low to High" },
                 ]}
               />
             </div>
@@ -2285,7 +2285,7 @@ function DatabaseTab({ data }: { data: DashboardData }) {
                 <tbody>{filteredFoodItems.length === 0 ? <tr><td colSpan={canEditMaster ? 7 : 6} className="p-4 text-center text-[#6a7669]">No master food items found.</td></tr> : filteredFoodItems.map((item) => <tr key={item.id} className="border-t border-[#eef3ec]"><td className="p-3 font-medium">{item.itemName}</td><td className="p-3">{round(item.carbohydrates)}g</td><td className="p-3">{round(item.proteins)}g</td><td className="p-3">{round(item.fats)}g</td><td className="p-3">{item.fibre == null ? "—" : `${round(item.fibre)}g`}</td><td className="p-3">{round(item.calories, 0)}</td>{canEditMaster ? <td className="p-3"><button type="button" onClick={() => openEditMasterModal(item)} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]"><Pencil className="size-4" /></button></td> : null}</tr>)}</tbody>
               </table>
             </div>
-            </> : <p className="p-4 text-sm text-[#6a7669]">Master food table is collapsed.</p>}
+            </> : <p className="p-4 text-sm text-[#6a7669]">Master Food Table is collapsed.</p>}
           </section>
 
           <section className="min-w-0 rounded-lg border border-[#dbe5d8] bg-white">
@@ -2308,19 +2308,19 @@ function DatabaseTab({ data }: { data: DashboardData }) {
                 filterValue={personalFilter}
                 onFilterChange={(value) => setPersonalFilter(value as "all" | "highProtein" | "highCalories" | "lowCarb")}
                 filterOptions={[
-                  { value: "all", label: "All foods" },
-                  { value: "highProtein", label: "High protein" },
-                  { value: "highCalories", label: "High calorie" },
-                  { value: "lowCarb", label: "Low carb" },
+                  { value: "all", label: "All Foods" },
+                  { value: "highProtein", label: "High Protein" },
+                  { value: "highCalories", label: "High Calorie" },
+                  { value: "lowCarb", label: "Low Carb" },
                 ]}
                 sortValue={personalSort}
                 onSortChange={(value) => setPersonalSort(value as "name_asc" | "name_desc" | "calories_desc" | "proteins_desc" | "carbs_asc")}
                 sortOptions={[
                   { value: "name_asc", label: "Name A to Z" },
                   { value: "name_desc", label: "Name Z to A" },
-                  { value: "calories_desc", label: "Calories high to low" },
-                  { value: "proteins_desc", label: "Proteins high to low" },
-                  { value: "carbs_asc", label: "Carbs low to high" },
+                  { value: "calories_desc", label: "Calories High to Low" },
+                  { value: "proteins_desc", label: "Proteins High to Low" },
+                  { value: "carbs_asc", label: "Carbs Low to High" },
                 ]}
               />
             </div>
@@ -2464,7 +2464,7 @@ function Profile({ data }: { data: DashboardData }) {
       <div className="space-y-5">
         <form action={profileAction} className="rounded-lg border border-[#dbe5d8] bg-white p-4">
           <input type="hidden" name="userId" value={data.selectedUser.id} />
-          <h2 className="font-semibold">Profile details</h2>
+          <h2 className="font-semibold">Profile Details</h2>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <Field name="name" label="Name" defaultValue={data.selectedUser.name} required />
             <Field name="email" label="Email" type="email" defaultValue={data.selectedUser.email} required />
@@ -2475,12 +2475,12 @@ function Profile({ data }: { data: DashboardData }) {
             <Field name="conditions" label="Conditions" defaultValue={data.selectedUser.conditions} />
           </div>
           <div className="mt-4"><ActionMessage state={profileState} /></div>
-          <button className="mt-4 h-10 rounded-md bg-[#245b35] px-4 text-sm font-semibold text-white">Save profile</button>
+          <button className="mt-4 h-10 rounded-md bg-[#245b35] px-4 text-sm font-semibold text-white">Save Profile</button>
         </form>
 
         <form action={targetAction} className="rounded-lg border border-[#dbe5d8] bg-white p-4">
           <input type="hidden" name="userId" value={data.selectedUser.id} />
-          <h2 className="font-semibold">Nutrition targets by effective date</h2>
+          <h2 className="font-semibold">Nutrition Targets by Effective Date</h2>
           {/* <p className="mt-1 text-sm text-[#6a7669]">Set the date from which the new target should apply. Older logs keep using older target profiles based on their log date.</p> */}
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <Field name="effectiveFrom" label="Effective from" type="date" defaultValue={today} required />
@@ -2490,13 +2490,13 @@ function Profile({ data }: { data: DashboardData }) {
             <Field name="targetFats" label="Target fats" type="number" step="0.1" defaultValue={data.selectedUser.activeTargets?.targetFats ?? ""} required />
           </div>
           <div className="mt-4"><ActionMessage state={targetState} /></div>
-          <button className="mt-4 h-10 rounded-md border border-[#d8e2d5] px-4 text-sm font-semibold hover:bg-[#f4f7f2]">Save target profile</button>
+          <button className="mt-4 h-10 rounded-md border border-[#d8e2d5] px-4 text-sm font-semibold hover:bg-[#f4f7f2]">Save Target Profile</button>
         </form>
 
         <form action={pinAction} className="rounded-lg border border-[#dbe5d8] bg-white p-4">
           <input type="hidden" name="userId" value={data.selectedUser.id} />
-          <div className="flex items-center gap-2"><LockKeyhole className="size-4 text-[#4f7f5d]" /><h2 className="font-semibold">{data.currentUser.role === "ADMIN" ? "Reset selected user PIN" : "Change PIN"}</h2></div>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2"><Field name="pin" label="New 4 digit PIN" type="password" required placeholder="1234" /></div>
+          <div className="flex items-center gap-2"><LockKeyhole className="size-4 text-[#4f7f5d]" /><h2 className="font-semibold">{data.currentUser.role === "ADMIN" ? "Reset Selected User PIN" : "Change PIN"}</h2></div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2"><Field name="pin" label="New 4 digit PIN" type="password" required placeholder="XXXX" /></div>
           <div className="mt-4"><ActionMessage state={pinState} /></div>
           <button className="mt-4 h-10 rounded-md border border-[#d8e2d5] px-4 text-sm font-semibold hover:bg-[#f4f7f2]">Save PIN</button>
         </form>
@@ -2504,15 +2504,15 @@ function Profile({ data }: { data: DashboardData }) {
 
       <section className="min-w-0 space-y-5">
         <div className="rounded-lg border border-[#dbe5d8] bg-white p-4">
-          <h2 className="font-semibold">Account summary</h2>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2"><StatCard label="Days on app" value={`${data.selectedUser.daysOnApp}`} helper="Based on start date" icon={UserRound} /><StatCard label="Days tracked" value={`${data.selectedUser.daysTracked}`} helper="Distinct food log dates" icon={Activity} /></div>
+          <h2 className="font-semibold">Account Summary</h2>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2"><StatCard label="Days on App" value={`${data.selectedUser.daysOnApp}`} helper="Based on start date" icon={UserRound} /><StatCard label="Days Tracked" value={`${data.selectedUser.daysTracked}`} helper="Distinct food log dates" icon={Activity} /></div>
         </div>
         <section className="rounded-lg border border-[#dbe5d8] bg-white p-4">
-          <div className="flex items-center justify-between gap-3"><div><h2 className="font-semibold">Target history</h2></div><button onClick={() => downloadCsv("LCHF-target-history.csv", [["Effective From", "Calories", "Carbs", "Proteins", "Fats"], ...filteredTargetProfiles.map((target) => [target.displayEffectiveFrom, target.targetCalories, target.targetCarbs, target.targetProteins, target.targetFats])])} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]"><Download className="size-4" /></button></div>
+          <div className="flex items-center justify-between gap-3"><div><h2 className="font-semibold">Target History</h2></div><button onClick={() => downloadCsv("LCHF-target-history.csv", [["Effective From", "Calories", "Carbs", "Proteins", "Fats"], ...filteredTargetProfiles.map((target) => [target.displayEffectiveFrom, target.targetCalories, target.targetCarbs, target.targetProteins, target.targetFats])])} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]"><Download className="size-4" /></button></div>
           <TableControls
             searchValue={targetSearch}
             onSearchChange={setTargetSearch}
-            searchPlaceholder="Search effective date"
+            searchPlaceholder="Search Effective Date"
             filterValue={targetFilter}
             onFilterChange={(value) => setTargetFilter(value as "all" | "past" | "todayForward" | "highCalories")}
             filterOptions={[
@@ -2524,10 +2524,10 @@ function Profile({ data }: { data: DashboardData }) {
             sortValue={targetSort}
             onSortChange={(value) => setTargetSort(value as "effective_desc" | "effective_asc" | "calories_desc" | "proteins_desc")}
             sortOptions={[
-              { value: "effective_desc", label: "Newest effective date" },
-              { value: "effective_asc", label: "Oldest effective date" },
-              { value: "calories_desc", label: "Calories high to low" },
-              { value: "proteins_desc", label: "Proteins high to low" },
+              { value: "effective_desc", label: "Newest Effective Date" },
+              { value: "effective_asc", label: "Oldest Effective Date" },
+              { value: "calories_desc", label: "Calories High to Low" },
+              { value: "proteins_desc", label: "Proteins High to Low" },
             ]}
           />
           <div className="mt-4 space-y-3 lg:hidden">
@@ -2658,7 +2658,7 @@ function Admin({ data }: { data: DashboardData }) {
       </section>
       <section className="space-y-5">
         <section className="min-w-0 rounded-lg border border-[#dbe5d8] bg-white">
-          <div className="border-b border-[#e4ece1] p-4"><h2 className="font-semibold">All users</h2><TableControls searchValue={userSearch} onSearchChange={setUserSearch} searchPlaceholder="Search by name, email, or mobile" filterValue={userRoleFilter} onFilterChange={(value) => setUserRoleFilter(value as "all" | Role)} filterOptions={[{ value: "all", label: "All roles" }, { value: "USER", label: "Users" }, { value: "ADMIN", label: "Admins" }]} sortValue={userSort} onSortChange={(value) => setUserSort(value as "name_asc" | "name_desc" | "tracking_desc" | "days_desc")} sortOptions={[{ value: "name_asc", label: "Name A to Z" }, { value: "name_desc", label: "Name Z to A" }, { value: "tracking_desc", label: "Tracking high to low" }, { value: "days_desc", label: "Days tracked high to low" }]} /></div>
+          <div className="border-b border-[#e4ece1] p-4"><h2 className="font-semibold">All users</h2><TableControls searchValue={userSearch} onSearchChange={setUserSearch} searchPlaceholder="Search by name, email, or mobile" filterValue={userRoleFilter} onFilterChange={(value) => setUserRoleFilter(value as "all" | Role)} filterOptions={[{ value: "all", label: "All roles" }, { value: "USER", label: "Users" }, { value: "ADMIN", label: "Admins" }]} sortValue={userSort} onSortChange={(value) => setUserSort(value as "name_asc" | "name_desc" | "tracking_desc" | "days_desc")} sortOptions={[{ value: "name_asc", label: "Name A to Z" }, { value: "name_desc", label: "Name Z to A" }, { value: "tracking_desc", label: "Tracking High to Low" }, { value: "days_desc", label: "Days tracked High to Low" }]} /></div>
           <div className="space-y-3 p-4 lg:hidden">
             {filteredUsers.length === 0 ? <p className="rounded-lg border border-dashed border-[#d8e2d5] bg-[#f9fbf8] p-4 text-center text-sm text-[#6a7669]">No users found.</p> : filteredUsers.map((user) => <article key={user.id} className="rounded-lg border border-[#e4ece1] bg-[#f9fbf8] p-4"><a href={`/dashboard?userId=${user.id}`} className="font-medium text-[#245b35] hover:underline">{user.name}</a><p className="mt-1 text-sm text-[#6a7669]">{user.email}</p><div className="mt-3 grid grid-cols-2 gap-3 text-sm text-[#4d5b4c]"><p><span className="font-medium text-[#172117]">Mobile:</span> {user.mobileNumber}</p><p><span className="font-medium text-[#172117]">Role:</span> {user.role}</p><p><span className="font-medium text-[#172117]">Days tracked:</span> {user.daysTracked}</p><p><span className="font-medium text-[#172117]">Tracking:</span> {Math.round(user.trackingRate)}%</p></div></article>)}
           </div>
@@ -2671,7 +2671,7 @@ function Admin({ data }: { data: DashboardData }) {
         </section>
         <section className="min-w-0 rounded-lg border border-[#dbe5d8] bg-white">
           <div className="flex items-center justify-between border-b border-[#e4ece1] p-4"><div><h2 className="font-semibold">Cross-user comparison</h2><p className="text-sm text-[#6a7669]">Compare intake, tracking, and latest medical values.</p></div><button onClick={() => downloadCsv("LCHF-admin-comparison.csv", [["Name", "Email", "Mobile", "Role", "Total Logs", "Days Tracked", "Tracking %", "Avg Calories/Log", "Avg Carbs/Log", "Avg Proteins/Log", "Avg Fats/Log", "Latest BMI", "Latest BP Low", "Latest BP High", "Latest Medical Date"], ...filteredComparisonRows.map((row) => [row.name, row.email, row.mobileNumber, row.role, row.totalLogs, row.daysTracked, Math.round(row.trackingRate), row.avgCaloriesPerLog, row.avgCarbsPerLog, row.avgProteinsPerLog, row.avgFatsPerLog, row.latestBmi, row.latestBpLow, row.latestBpHigh, row.latestMedicalDate])])} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]"><Download className="size-4" /></button></div>
-          <div className="px-4 pb-4"><TableControls searchValue={comparisonSearch} onSearchChange={setComparisonSearch} searchPlaceholder="Search user, email, or mobile" filterValue={comparisonRoleFilter} onFilterChange={(value) => setComparisonRoleFilter(value as "all" | Role)} filterOptions={[{ value: "all", label: "All roles" }, { value: "USER", label: "Users" }, { value: "ADMIN", label: "Admins" }]} sortValue={comparisonSort} onSortChange={(value) => setComparisonSort(value as "tracking_desc" | "logs_desc" | "calories_desc" | "name_asc")} sortOptions={[{ value: "tracking_desc", label: "Tracking high to low" }, { value: "logs_desc", label: "Logs high to low" }, { value: "calories_desc", label: "Avg kcal high to low" }, { value: "name_asc", label: "Name A to Z" }]} /></div>
+          <div className="px-4 pb-4"><TableControls searchValue={comparisonSearch} onSearchChange={setComparisonSearch} searchPlaceholder="Search user, email, or mobile" filterValue={comparisonRoleFilter} onFilterChange={(value) => setComparisonRoleFilter(value as "all" | Role)} filterOptions={[{ value: "all", label: "All roles" }, { value: "USER", label: "Users" }, { value: "ADMIN", label: "Admins" }]} sortValue={comparisonSort} onSortChange={(value) => setComparisonSort(value as "tracking_desc" | "logs_desc" | "calories_desc" | "name_asc")} sortOptions={[{ value: "tracking_desc", label: "Tracking High to Low" }, { value: "logs_desc", label: "Logs High to Low" }, { value: "calories_desc", label: "Avg kcal High to Low" }, { value: "name_asc", label: "Name A to Z" }]} /></div>
           <div className="space-y-3 px-4 pb-4 lg:hidden">
             {filteredComparisonRows.length === 0 ? <p className="rounded-lg border border-dashed border-[#d8e2d5] bg-[#f9fbf8] p-4 text-center text-sm text-[#6a7669]">No comparison rows found.</p> : filteredComparisonRows.map((row) => <article key={row.userId} className="rounded-lg border border-[#e4ece1] bg-[#f9fbf8] p-4"><a href={`/dashboard?userId=${row.userId}`} className="font-medium text-[#245b35] hover:underline">{row.name}</a><p className="mt-1 text-sm text-[#6a7669]">{row.email}</p><div className="mt-3 grid grid-cols-2 gap-3 text-sm text-[#4d5b4c]"><p><span className="font-medium text-[#172117]">Logs:</span> {row.totalLogs}</p><p><span className="font-medium text-[#172117]">Tracked days:</span> {row.daysTracked}</p><p><span className="font-medium text-[#172117]">Tracking:</span> {Math.round(row.trackingRate)}%</p><p><span className="font-medium text-[#172117]">Avg kcal:</span> {round(row.avgCaloriesPerLog, 0)}</p><p><span className="font-medium text-[#172117]">Avg carbs:</span> {round(row.avgCarbsPerLog)}g</p><p><span className="font-medium text-[#172117]">Avg proteins:</span> {round(row.avgProteinsPerLog)}g</p><p><span className="font-medium text-[#172117]">Avg fats:</span> {round(row.avgFatsPerLog)}g</p><p><span className="font-medium text-[#172117]">Latest BMI:</span> {row.latestBmi === null ? "-" : round(row.latestBmi)}</p></div><p className="mt-3 text-sm text-[#4d5b4c]"><span className="font-medium text-[#172117]">Latest BP:</span> {row.latestBpHigh && row.latestBpLow ? `${round(row.latestBpHigh, 0)}/${round(row.latestBpLow, 0)}` : "-"}</p></article>)}
           </div>

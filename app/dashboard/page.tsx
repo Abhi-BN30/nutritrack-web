@@ -267,6 +267,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       proteins: item.proteins,
       fats: item.fats,
       calories: item.calories,
+      fibre: item.fibre,
     })),
     personalFoodItems: personalFoodItems.map((item) => ({
       id: item.id,
@@ -299,6 +300,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       displayDate: displayDate(record.date),
       weight: record.weight,
       height: record.height,
+      waist: record.waist,
+      heightToWaistRatio: record.waist && record.waist > 0 ? record.height / record.waist : null,
       bmi: record.bmi,
       bpLow: record.bpLow,
       bpHigh: record.bpHigh,

@@ -17,6 +17,22 @@ const optionalPositiveInt = z.preprocess((value) => {
   return value;
 }, z.coerce.number().int().positive().optional());
 
+const optionalNonnegativeNumber = z.preprocess((value) => {
+  if (value === "" || value === null || value === undefined) {
+    return undefined;
+  }
+
+  return value;
+}, z.coerce.number().nonnegative().optional());
+
+const optionalPositiveNumber = z.preprocess((value) => {
+  if (value === "" || value === null || value === undefined) {
+    return undefined;
+  }
+
+  return value;
+}, z.coerce.number().positive().optional());
+
 export const pinSchema = z.string().regex(/^\d{4}$/, "PIN must be exactly 4 digits.");
 export const phoneSchema = z.string().trim().regex(/^\d{10,15}$/, "Mobile number must be 10 to 15 digits.");
 
@@ -72,6 +88,7 @@ export const foodItemSchema = z.object({
   proteins: z.coerce.number().nonnegative(),
   fats: z.coerce.number().nonnegative(),
   calories: z.coerce.number().nonnegative(),
+  fibre: optionalNonnegativeNumber,
 });
 
 export const personalFoodItemSchema = z.object({
@@ -90,6 +107,7 @@ export const medicalRecordSchema = z.object({
   date: z.coerce.date(),
   weight: z.coerce.number().positive(),
   height: z.coerce.number().positive(),
+  waist: optionalPositiveNumber,
   bpLow: z.coerce.number().positive(),
   bpHigh: z.coerce.number().positive(),
 });

@@ -88,6 +88,7 @@ type FoodItem = {
   proteins: number;
   fats: number;
   calories: number;
+  fibre: number | null;
 };
 
 type PersonalFoodItem = FoodItem & {
@@ -117,6 +118,8 @@ type MedicalRecord = {
   displayDate: string;
   weight: number;
   height: number;
+  waist: number | null;
+  heightToWaistRatio: number | null;
   bmi: number;
   bpLow: number;
   bpHigh: number;
@@ -415,6 +418,7 @@ function Field({
   type = "text",
   required = false,
   step,
+  min,
   placeholder,
 }: {
   name: string;
@@ -423,6 +427,7 @@ function Field({
   type?: string;
   required?: boolean;
   step?: string;
+  min?: string;
   placeholder?: string;
 }) {
   if (type === "date") {
@@ -437,6 +442,7 @@ function Field({
         type={type}
         required={required}
         step={step}
+        min={min}
         defaultValue={defaultValue ?? ""}
         placeholder={placeholder}
         className="h-10 w-full rounded-md border border-[#d8e2d5] bg-white px-3 text-sm outline-none focus:border-[#245b35]"
@@ -1484,7 +1490,7 @@ function Medical({ data }: { data: DashboardData }) {
             {data.medicalRecords.length === 0 ? <p className="text-sm text-[#6a7669]">No medical records yet.</p> : data.medicalRecords.map((record) => (
               <div key={record.id} className="rounded-lg border border-[#e4ece1] p-4">
                 <div className="mb-3 flex items-center justify-between gap-3"><p className="font-medium">{record.displayDate}</p><div className="flex gap-2"><button type="button" onClick={() => openEditMedicalModal(record)} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]"><Pencil className="size-4" /></button><form action={deleteMedicalRecord}><input type="hidden" name="id" value={record.id} /><button className="rounded-md border border-[#ead0cb] p-2 text-[#a13f32] hover:bg-[#fff4f2]"><Trash2 className="size-4" /></button></form></div></div>
-                <div className="grid grid-cols-2 gap-2 text-sm"><p>Weight: {round(record.weight)} kg</p><p>Height: {round(record.height)} cm</p><p>BMI: {round(record.bmi)}</p><p>BP: {round(record.bpHigh, 0)}/{round(record.bpLow, 0)}</p></div>
+                <div className="grid grid-cols-2 gap-2 text-sm"><p>Weight: {round(record.weight)} kg</p><p>Height: {round(record.height)} cm</p><p>Waist: {record.waist == null ? "—" : `${round(record.waist)} cm`}</p><p>Height / waist: {record.heightToWaistRatio == null ? "—" : round(record.heightToWaistRatio, 2)}</p><p>BMI: {round(record.bmi)}</p><p>BP: {round(record.bpHigh, 0)}/{round(record.bpLow, 0)}</p></div>
               </div>
             ))}
           </div>
@@ -1500,7 +1506,7 @@ function Medical({ data }: { data: DashboardData }) {
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <h2 className="text-lg font-semibold text-[#172117]">{editingRecord ? "Edit biometric data" : "Add medical data"}</h2>
-                  <p className="mt-1 text-sm text-[#6a7669]">Save a dated weight, height, blood pressure, and BMI record.</p>
+                  <p className="mt-1 text-sm text-[#6a7669]">Save a dated weight, height, waist, blood pressure, and BMI record.</p>
                 </div>
                 <button type="button" onClick={closeMedicalModal} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]" aria-label="Close medical popup">
                   <X className="size-4" />
@@ -1509,6 +1515,7 @@ function Medical({ data }: { data: DashboardData }) {
               <div className="mt-5 grid gap-3 sm:grid-cols-2">
                 <Field name="weight" label="Weight kg" type="number" step="0.1" defaultValue={editingRecord?.weight ?? ""} required />
                 <Field name="height" label="Height cm" type="number" step="0.1" defaultValue={editingRecord?.height ?? ""} required />
+                <Field name="waist" label="Waist cm" type="number" step="0.1" min="0.1" defaultValue={editingRecord?.waist ?? ""} />
                 <Field name="bpHigh" label="Systolic BP" type="number" step="1" defaultValue={editingRecord?.bpHigh ?? ""} required />
                 <Field name="bpLow" label="Diastolic BP" type="number" step="1" defaultValue={editingRecord?.bpLow ?? ""} required />
                 <Field name="date" label="Date" type="date" defaultValue={editingRecord?.date ?? today} required />
@@ -2025,7 +2032,7 @@ function DatabaseTab({ data }: { data: DashboardData }) {
                 <p className="text-sm text-[#6a7669]">Shared list visible to all users.</p>
               </div>
               <div className="flex items-center gap-2">
-                <button onClick={() => downloadCsv("LCHF-food-master.csv", [["Item", "Carbohydrates", "Proteins", "Fats", "Calories"], ...filteredFoodItems.map((item) => [item.itemName, item.carbohydrates, item.proteins, item.fats, item.calories])])} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]" aria-label="Download master food items"><Download className="size-4" /></button>
+                <button onClick={() => downloadCsv("LCHF-food-master.csv", [["Item", "Carbohydrates", "Proteins", "Fats", "Fibre", "Calories"], ...filteredFoodItems.map((item) => [item.itemName, item.carbohydrates, item.proteins, item.fats, item.fibre, item.calories])])} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]" aria-label="Download master food items"><Download className="size-4" /></button>
                 <button type="button" onClick={() => setMasterTableExpanded((value) => !value)} className="inline-flex items-center gap-2 rounded-md border border-[#d8e2d5] px-3 py-2 text-sm font-medium hover:bg-[#f4f7f2]">{masterTableExpanded ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}{masterTableExpanded ? "Collapse" : "Expand"}</button>
               </div>
             </div>
@@ -2055,12 +2062,12 @@ function DatabaseTab({ data }: { data: DashboardData }) {
               />
             </div>
             <div className="space-y-3 px-4 pb-4 lg:hidden">
-              {filteredFoodItems.length === 0 ? <p className="rounded-lg border border-dashed border-[#d8e2d5] bg-[#f9fbf8] p-4 text-center text-sm text-[#6a7669]">No master food items found.</p> : filteredFoodItems.map((item) => <article key={item.id} className="rounded-lg border border-[#e4ece1] bg-[#f9fbf8] p-4"><div className="flex items-start justify-between gap-3"><p className="font-medium text-[#172117]">{item.itemName}</p>{canEditMaster ? <button type="button" onClick={() => openEditMasterModal(item)} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]"><Pencil className="size-4" /></button> : null}</div><div className="mt-3 grid grid-cols-2 gap-3 text-sm text-[#4d5b4c]"><p><span className="font-medium text-[#172117]">Carbs:</span> {round(item.carbohydrates)}g</p><p><span className="font-medium text-[#172117]">Proteins:</span> {round(item.proteins)}g</p><p><span className="font-medium text-[#172117]">Fats:</span> {round(item.fats)}g</p><p><span className="font-medium text-[#172117]">Calories:</span> {round(item.calories, 0)}</p></div></article>)}
+              {filteredFoodItems.length === 0 ? <p className="rounded-lg border border-dashed border-[#d8e2d5] bg-[#f9fbf8] p-4 text-center text-sm text-[#6a7669]">No master food items found.</p> : filteredFoodItems.map((item) => <article key={item.id} className="rounded-lg border border-[#e4ece1] bg-[#f9fbf8] p-4"><div className="flex items-start justify-between gap-3"><p className="font-medium text-[#172117]">{item.itemName}</p>{canEditMaster ? <button type="button" onClick={() => openEditMasterModal(item)} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]"><Pencil className="size-4" /></button> : null}</div><div className="mt-3 grid grid-cols-2 gap-3 text-sm text-[#4d5b4c]"><p><span className="font-medium text-[#172117]">Carbs:</span> {round(item.carbohydrates)}g</p><p><span className="font-medium text-[#172117]">Proteins:</span> {round(item.proteins)}g</p><p><span className="font-medium text-[#172117]">Fats:</span> {round(item.fats)}g</p><p><span className="font-medium text-[#172117]">Fibre:</span> {item.fibre == null ? "—" : `${round(item.fibre)}g`}</p><p><span className="font-medium text-[#172117]">Calories:</span> {round(item.calories, 0)}</p></div></article>)}
             </div>
             <div className="hidden overflow-x-auto lg:block">
-              <table className="w-full min-w-[760px] text-sm">
-                <thead className="bg-[#f4f8f2] text-left"><tr><th className="p-3">Item</th><th className="p-3">Carbs</th><th className="p-3">Proteins</th><th className="p-3">Fats</th><th className="p-3">Calories</th>{canEditMaster ? <th className="p-3">Actions</th> : null}</tr></thead>
-                <tbody>{filteredFoodItems.length === 0 ? <tr><td colSpan={canEditMaster ? 6 : 5} className="p-4 text-center text-[#6a7669]">No master food items found.</td></tr> : filteredFoodItems.map((item) => <tr key={item.id} className="border-t border-[#eef3ec]"><td className="p-3 font-medium">{item.itemName}</td><td className="p-3">{round(item.carbohydrates)}g</td><td className="p-3">{round(item.proteins)}g</td><td className="p-3">{round(item.fats)}g</td><td className="p-3">{round(item.calories, 0)}</td>{canEditMaster ? <td className="p-3"><button type="button" onClick={() => openEditMasterModal(item)} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]"><Pencil className="size-4" /></button></td> : null}</tr>)}</tbody>
+              <table className="w-full min-w-[840px] text-sm">
+                <thead className="bg-[#f4f8f2] text-left"><tr><th className="p-3">Item</th><th className="p-3">Carbs</th><th className="p-3">Proteins</th><th className="p-3">Fats</th><th className="p-3">Fibre</th><th className="p-3">Calories</th>{canEditMaster ? <th className="p-3">Actions</th> : null}</tr></thead>
+                <tbody>{filteredFoodItems.length === 0 ? <tr><td colSpan={canEditMaster ? 7 : 6} className="p-4 text-center text-[#6a7669]">No master food items found.</td></tr> : filteredFoodItems.map((item) => <tr key={item.id} className="border-t border-[#eef3ec]"><td className="p-3 font-medium">{item.itemName}</td><td className="p-3">{round(item.carbohydrates)}g</td><td className="p-3">{round(item.proteins)}g</td><td className="p-3">{round(item.fats)}g</td><td className="p-3">{item.fibre == null ? "—" : `${round(item.fibre)}g`}</td><td className="p-3">{round(item.calories, 0)}</td>{canEditMaster ? <td className="p-3"><button type="button" onClick={() => openEditMasterModal(item)} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]"><Pencil className="size-4" /></button></td> : null}</tr>)}</tbody>
               </table>
             </div>
             </> : <p className="p-4 text-sm text-[#6a7669]">Master food table is collapsed.</p>}
@@ -2145,6 +2152,7 @@ function DatabaseTab({ data }: { data: DashboardData }) {
                 <Field name="carbohydrates" label="Carbohydrates" type="number" step="0.1" defaultValue={editingMasterFood?.carbohydrates ?? ""} required />
                 <Field name="proteins" label="Proteins" type="number" step="0.1" defaultValue={editingMasterFood?.proteins ?? ""} required />
                 <Field name="fats" label="Fats" type="number" step="0.1" defaultValue={editingMasterFood?.fats ?? ""} required />
+                <Field name="fibre" label="Fibre" type="number" step="0.1" min="0" defaultValue={editingMasterFood?.fibre ?? ""} />
                 <Field name="calories" label="Calories" type="number" step="0.1" defaultValue={editingMasterFood?.calories ?? ""} required />
               </div>
               <div className="mt-4"><ActionMessage state={masterState} /></div>

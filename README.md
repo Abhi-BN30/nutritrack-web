@@ -29,11 +29,13 @@ Master table with per-100g nutrition values:
 - `proteins`
 - `fats`
 - `calories`
+- `fibre`
 
 ### 3. `medical_records`
 Stores historical medical data for a user. Every update creates a **new row**.
 - `weight`
 - `height`
+- `waist`
 - `bmi`
 - `bpLow`
 - `bpHigh`

@@ -336,6 +336,7 @@ export async function saveFoodItem(_state: ActionState, formData: FormData): Pro
     proteins: formValue(formData, "proteins"),
     fats: formValue(formData, "fats"),
     calories: formValue(formData, "calories"),
+    fibre: formValue(formData, "fibre"),
   });
 
   if (!parsed.success) {
@@ -352,6 +353,7 @@ export async function saveFoodItem(_state: ActionState, formData: FormData): Pro
           proteins: parsed.data.proteins,
           fats: parsed.data.fats,
           calories: parsed.data.calories,
+          fibre: parsed.data.fibre,
         },
       });
 
@@ -366,6 +368,7 @@ export async function saveFoodItem(_state: ActionState, formData: FormData): Pro
         proteins: parsed.data.proteins,
         fats: parsed.data.fats,
         calories: parsed.data.calories,
+        fibre: parsed.data.fibre,
       },
     });
   } catch (error) {
@@ -508,6 +511,7 @@ export async function saveMedicalRecord(
     date: formValue(formData, "date"),
     weight: formValue(formData, "weight"),
     height: formValue(formData, "height"),
+    waist: formValue(formData, "waist"),
     bpLow: formValue(formData, "bpLow"),
     bpHigh: formValue(formData, "bpHigh"),
   });
@@ -532,6 +536,7 @@ export async function saveMedicalRecord(
           date: startOfDay(parsed.data.date),
           weight: parsed.data.weight,
           height: parsed.data.height,
+          waist: parsed.data.waist,
           bmi,
           bpLow: parsed.data.bpLow,
           bpHigh: parsed.data.bpHigh,
@@ -548,6 +553,7 @@ export async function saveMedicalRecord(
         date: startOfDay(parsed.data.date),
         weight: parsed.data.weight,
         height: parsed.data.height,
+        waist: parsed.data.waist,
         bmi,
         bpLow: parsed.data.bpLow,
         bpHigh: parsed.data.bpHigh,

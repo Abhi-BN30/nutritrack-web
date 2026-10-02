@@ -1422,7 +1422,7 @@ function Tracker({ data }: { data: DashboardData }) {
 
   return (
     <>
-      <button
+      {/* <button
         type="button"
         onClick={openAddLogModal}
         className="fixed bottom-5 right-5 z-30 inline-flex items-center gap-2 rounded-full bg-[#245b35] px-4 py-3 text-sm font-semibold text-white shadow-[0_12px_30px_rgba(36,91,53,0.35)] transition hover:bg-[#1d4a2b]"
@@ -1430,7 +1430,7 @@ function Tracker({ data }: { data: DashboardData }) {
       >
         <Plus className="size-4" />
         Add
-      </button>
+      </button> */}
 
       <div className="space-y-5">
         <div className="grid gap-5 2xl:grid-cols-[0.95fr_1.05fr]">
@@ -1463,7 +1463,7 @@ function Tracker({ data }: { data: DashboardData }) {
                   </div>
                   <button type="button" onClick={openAddLogModal} className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-[#245b35] px-4 text-sm font-semibold text-white hover:bg-[#1d4a2b]">
                     <Plus className="size-4" />
-                    Add log
+                    Add Log
                   </button>
                 </div>
               </div>
@@ -2227,12 +2227,12 @@ function DatabaseTab({ data }: { data: DashboardData }) {
             <div className="rounded-lg border border-[#dbe5d8] bg-white p-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h2 className="font-semibold">My personal food items</h2>
+                  <h2 className="font-semibold">My Personal Food Items</h2>
                   <p className="mt-1 text-sm text-[#6a7669]">These are private to your account and do not modify the master food database.</p>
                 </div>
                 <button type="button" onClick={openAddPersonalModal} className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-[#245b35] px-4 text-sm font-semibold text-white hover:bg-[#1d4a2b]">
                   <Plus className="size-4" />
-                  Add my item
+                  Add My Item
                 </button>
               </div>
             </div>
@@ -2243,7 +2243,7 @@ function DatabaseTab({ data }: { data: DashboardData }) {
           <section className="min-w-0 rounded-lg border border-[#dbe5d8] bg-white">
             <div className="flex items-center justify-between border-b border-[#e4ece1] p-4">
               <div>
-                <h2 className="font-semibold">Master food Items</h2>
+                <h2 className="font-semibold">Master Food Items</h2>
                 <p className="text-sm text-[#6a7669]">Shared list visible to all users.</p>
               </div>
               <div className="flex items-center gap-2">

@@ -74,7 +74,7 @@ export function InstallAppButton({ className = "", compactLabel }: InstallAppBut
         className={`inline-flex items-center gap-2 rounded-md border border-[#d8e2d5] px-3 py-2 text-sm font-semibold text-[#245b35] hover:bg-[#edf7ec] ${className}`}
       >
         <Download className="size-4" />
-        {compactLabel ?? "Install app"}
+        {compactLabel ?? "Install App"}
       </button>
     );
   }
@@ -91,11 +91,11 @@ export function InstallAppButton({ className = "", compactLabel }: InstallAppBut
         className="inline-flex items-center gap-2 rounded-md border border-[#d8e2d5] px-3 py-2 text-sm font-semibold text-[#245b35] hover:bg-[#edf7ec]"
       >
         <Download className="size-4" />
-        {compactLabel ?? "Install app"}
+        {compactLabel ?? "Install App"}
       </button>
       {showFallback ? (
         <p className="max-w-xs text-xs leading-5 text-[#6a7669]">
-          This installs a secure browser app, not an APK. In Chrome, open the browser menu and choose <span className="font-semibold text-[#245b35]">Install app</span> or <span className="font-semibold text-[#245b35]">Add to Home screen</span>.
+          This installs a secure browser app, not an APK. In Chrome, open the browser menu and choose <span className="font-semibold text-[#245b35]">Install App</span> or <span className="font-semibold text-[#245b35]">Add to Home screen</span>.
         </p>
       ) : null}
     </div>

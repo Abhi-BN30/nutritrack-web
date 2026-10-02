@@ -26,12 +26,12 @@ export default async function Home() {
               Clinical nutrition workspace
             </p>
             <h1 className="text-4xl font-semibold leading-tight sm:text-5xl">
-              Food logs, medical markers, and admin analytics in one installable web app.
+              Food Logs, Medical Markers, all in one App.
             </h1>
-            <p className="mt-6 max-w-xl text-base leading-7 text-[#526052]">
+            {/* <p className="mt-6 max-w-xl text-base leading-7 text-[#526052]">
               Users log meals and biometrics from any device. Admins review every user,
               compare trends, and maintain one centralized nutrition master table.
-            </p>
+            </p> */}
             {/* <div className="mt-8 grid max-w-xl grid-cols-2 gap-3 sm:grid-cols-4">
               {["PWA ready", "Neon DB", "PIN login", "Admin role"].map((item) => (
                 <div

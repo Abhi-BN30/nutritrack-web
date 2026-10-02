@@ -18,15 +18,12 @@ export function LoginForm() {
         <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#4f7f5d]">
           Sign in
         </p>
-        <h2 className="mt-2 text-2xl font-semibold">Email or mobile with 4 digit PIN</h2>
-        <p className="mt-2 text-sm leading-6 text-[#667266]">
-          Admins and users use the same entry point. Your role decides which dashboard opens.
-        </p>
+        <h2 className="mt-2 text-2xl font-semibold">Email or Mobile Num with 4 Digit PIN</h2>
       </div>
 
       <div className="mt-7 space-y-4">
         <label className="block">
-          <span className="mb-2 block text-sm font-medium">Email or mobile</span>
+          <span className="mb-2 block text-sm font-medium">Email or Mobile</span>
           <span className="flex items-center gap-2 rounded-md border border-[#ccd8c9] bg-white px-3">
             <Mail className="size-4 text-[#6c7a6b]" />
             <Smartphone className="size-4 text-[#6c7a6b]" />
@@ -36,13 +33,13 @@ export function LoginForm() {
               required
               autoComplete="username"
               className="h-11 w-full bg-transparent text-sm outline-none"
-              placeholder="user@example.com or 9876543210"
+              placeholder="user@gmail.com or mobile"
             />
           </span>
         </label>
 
         <label className="block">
-          <span className="mb-2 block text-sm font-medium">4 digit PIN</span>
+          <span className="mb-2 block text-sm font-medium">4 Digit PIN</span>
           <span className="flex items-center gap-2 rounded-md border border-[#ccd8c9] bg-white px-3">
             <LockKeyhole className="size-4 text-[#6c7a6b]" />
             <input
@@ -54,7 +51,7 @@ export function LoginForm() {
               maxLength={4}
               autoComplete="current-password"
               className="h-11 w-full bg-transparent text-sm outline-none"
-              placeholder="1234"
+              placeholder="XXXX"
             />
           </span>
         </label>
@@ -71,7 +68,7 @@ export function LoginForm() {
         disabled={pending}
         className="mt-6 h-11 w-full rounded-md bg-[#245b35] px-4 text-sm font-semibold text-white transition hover:bg-[#1c492a] disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {pending ? "Signing in..." : "Open dashboard"}
+        {pending ? "Signing In..." : "Open Dashboard"}
       </button>
     </form>
   );

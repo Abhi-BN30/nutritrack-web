@@ -676,7 +676,7 @@ function FoodChoiceField({
 }) {
   return (
     <label className="sm:col-span-2">
-      <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[#6a7669]">Food item</span>
+      <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[#6a7669]">Food Item</span>
       <input type="hidden" name={name} value={value} />
       <div className="relative">
         <div className={`flex items-center rounded-md border bg-white transition-colors ${isOpen ? "border-[#245b35] ring-2 ring-[#dcebd9]" : "border-[#d8e2d5]"}`}>
@@ -1554,7 +1554,7 @@ function Tracker({ data }: { data: DashboardData }) {
               <table className="w-full min-w-[1000px] text-sm">
                 <thead className="bg-[#f4f8f2] text-left">
                   <tr>
-                    <th className="p-3">Date</th><th className="p-3">Dish</th><th className="p-3">Food item</th><th className="p-3">Qty</th><th className="p-3">Carbs</th><th className="p-3">Proteins</th><th className="p-3">Fats</th><th className="p-3">Fibre</th><th className="p-3">Calories</th><th className="p-3">Protein/Carb ratio</th><th className="p-3">Actions</th>
+                    <th className="p-3">Date</th><th className="p-3">Dish</th><th className="p-3">Food item</th><th className="p-3">Qty</th><th className="p-3">Carbs</th><th className="p-3">Proteins</th><th className="p-3">Fats</th><th className="p-3">Fibre</th><th className="p-3">Calories</th><th className="p-3">Protein/Carb Ratio</th><th className="p-3">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1695,7 +1695,7 @@ function Medical({ data }: { data: DashboardData }) {
             {data.medicalRecords.length === 0 ? <p className="text-sm text-[#6a7669]">No medical records yet.</p> : data.medicalRecords.map((record) => (
               <div key={record.id} className="rounded-lg border border-[#e4ece1] p-4">
                 <div className="mb-3 flex items-center justify-between gap-3"><p className="font-medium">{record.displayDate}</p><div className="flex gap-2"><button type="button" onClick={() => openEditMedicalModal(record)} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]"><Pencil className="size-4" /></button><form action={deleteMedicalRecord}><input type="hidden" name="id" value={record.id} /><button className="rounded-md border border-[#ead0cb] p-2 text-[#a13f32] hover:bg-[#fff4f2]"><Trash2 className="size-4" /></button></form></div></div>
-                <div className="grid grid-cols-2 gap-2 text-sm"><p>Weight: {round(record.weight)} kg</p><p>Height: {round(record.height)} cm</p><p>Waist: {record.waist == null ? "—" : `${round(record.waist)} cm`}</p><p>Height / waist: {record.heightToWaistRatio == null ? "—" : round(record.heightToWaistRatio, 2)}</p><p>BMI: {round(record.bmi)}</p><p>BP: {round(record.bpHigh, 0)}/{round(record.bpLow, 0)}</p></div>
+                <div className="grid grid-cols-2 gap-2 text-sm"><p>Weight: {round(record.weight)} kg</p><p>Height: {round(record.height)} cm</p><p>Waist: {record.waist == null ? "—" : `${round(record.waist)} cm`}</p><p>Height / Waist: {record.heightToWaistRatio == null ? "—" : round(record.heightToWaistRatio, 2)}</p><p>BMI: {round(record.bmi)}</p><p>BP: {round(record.bpHigh, 0)}/{round(record.bpLow, 0)}</p></div>
               </div>
             ))}
           </div>
@@ -2483,7 +2483,7 @@ function Profile({ data }: { data: DashboardData }) {
           <h2 className="font-semibold">Nutrition Targets by Effective Date</h2>
           {/* <p className="mt-1 text-sm text-[#6a7669]">Set the date from which the new target should apply. Older logs keep using older target profiles based on their log date.</p> */}
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <Field name="effectiveFrom" label="Effective from" type="date" defaultValue={today} required />
+            <Field name="effectiveFrom" label="Effective From" type="date" defaultValue={today} required />
             <Field name="targetCalories" label="Target calories" type="number" step="0.1" defaultValue={data.selectedUser.activeTargets?.targetCalories ?? ""} required />
             <Field name="targetCarbs" label="Target carbs" type="number" step="0.1" defaultValue={data.selectedUser.activeTargets?.targetCarbs ?? ""} required />
             <Field name="targetProteins" label="Target proteins" type="number" step="0.1" defaultValue={data.selectedUser.activeTargets?.targetProteins ?? ""} required />
@@ -2516,9 +2516,9 @@ function Profile({ data }: { data: DashboardData }) {
             filterValue={targetFilter}
             onFilterChange={(value) => setTargetFilter(value as "all" | "past" | "todayForward" | "highCalories")}
             filterOptions={[
-              { value: "all", label: "All targets" },
-              { value: "past", label: "Past targets" },
-              { value: "todayForward", label: "Today onward" },
+              { value: "all", label: "All Targets" },
+              { value: "past", label: "Past Targets" },
+              { value: "todayForward", label: "Today Onwards" },
               { value: "highCalories", label: "2000+ kcal" },
             ]}
             sortValue={targetSort}
@@ -2614,14 +2614,14 @@ function Admin({ data }: { data: DashboardData }) {
   return (
     <div className="grid gap-5 2xl:grid-cols-[0.9fr_1.1fr]">
       <section className="space-y-4">
-        <div className="grid gap-3 sm:grid-cols-2"><StatCard label="Users" value={`${data.adminMetrics.totalUsers}`} helper="User accounts" icon={Users} /><StatCard label="Admins" value={`${data.adminMetrics.totalAdmins}`} helper="Admin accounts" icon={ShieldCheck} /><StatCard label="Avg calories" value={round(data.adminMetrics.avgCalories, 0)} helper="Average per food log" icon={Activity} /><StatCard label="High BP records" value={`${data.adminMetrics.highBpCount}`} helper=">= 130/80" icon={HeartPulse} /></div>
+        <div className="grid gap-3 sm:grid-cols-2"><StatCard label="Users" value={`${data.adminMetrics.totalUsers}`} helper="User accounts" icon={Users} /><StatCard label="Admins" value={`${data.adminMetrics.totalAdmins}`} helper="Admin accounts" icon={ShieldCheck} /></div>
         <form action={action} className="rounded-lg border border-[#dbe5d8] bg-white p-4">
-          <h2 className="font-semibold">Create user</h2>
+          <h2 className="font-semibold">Create User</h2>
           <div className="mt-4 space-y-4">
             <section className="rounded-lg border border-[#e4ece1] bg-[#f9fbf8] p-4">
               <div className="mb-4">
-                <h3 className="text-sm font-semibold uppercase tracking-[0.14em] text-[#4f7f5d]">User details</h3>
-                <p className="mt-1 text-sm text-[#6a7669]">Basic account, profile, and access information.</p>
+                <h3 className="text-sm font-semibold uppercase tracking-[0.14em] text-[#4f7f5d]">User Details</h3>
+                <p className="mt-1 text-sm text-[#6a7669]">Basic Account, Profile, and Access Information.</p>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <Field name="name" label="Name" required />
@@ -2653,12 +2653,12 @@ function Admin({ data }: { data: DashboardData }) {
             </section>
           </div>
           <div className="mt-4"><ActionMessage state={state} /></div>
-          <button className="mt-4 h-10 rounded-md bg-[#245b35] px-4 text-sm font-semibold text-white">Create user</button>
+          <button className="mt-4 h-10 rounded-md bg-[#245b35] px-4 text-sm font-semibold text-white">Create User</button>
         </form>
       </section>
       <section className="space-y-5">
         <section className="min-w-0 rounded-lg border border-[#dbe5d8] bg-white">
-          <div className="border-b border-[#e4ece1] p-4"><h2 className="font-semibold">All users</h2><TableControls searchValue={userSearch} onSearchChange={setUserSearch} searchPlaceholder="Search by name, email, or mobile" filterValue={userRoleFilter} onFilterChange={(value) => setUserRoleFilter(value as "all" | Role)} filterOptions={[{ value: "all", label: "All roles" }, { value: "USER", label: "Users" }, { value: "ADMIN", label: "Admins" }]} sortValue={userSort} onSortChange={(value) => setUserSort(value as "name_asc" | "name_desc" | "tracking_desc" | "days_desc")} sortOptions={[{ value: "name_asc", label: "Name A to Z" }, { value: "name_desc", label: "Name Z to A" }, { value: "tracking_desc", label: "Tracking High to Low" }, { value: "days_desc", label: "Days tracked High to Low" }]} /></div>
+          <div className="border-b border-[#e4ece1] p-4"><h2 className="font-semibold">All Users</h2><TableControls searchValue={userSearch} onSearchChange={setUserSearch} searchPlaceholder="Search by name, email, or mobile" filterValue={userRoleFilter} onFilterChange={(value) => setUserRoleFilter(value as "all" | Role)} filterOptions={[{ value: "all", label: "All Roles" }, { value: "USER", label: "Users" }, { value: "ADMIN", label: "Admins" }]} sortValue={userSort} onSortChange={(value) => setUserSort(value as "name_asc" | "name_desc" | "tracking_desc" | "days_desc")} sortOptions={[{ value: "name_asc", label: "Name A to Z" }, { value: "name_desc", label: "Name Z to A" }, { value: "tracking_desc", label: "Tracking High to Low" }, { value: "days_desc", label: "Days tracked High to Low" }]} /></div>
           <div className="space-y-3 p-4 lg:hidden">
             {filteredUsers.length === 0 ? <p className="rounded-lg border border-dashed border-[#d8e2d5] bg-[#f9fbf8] p-4 text-center text-sm text-[#6a7669]">No users found.</p> : filteredUsers.map((user) => <article key={user.id} className="rounded-lg border border-[#e4ece1] bg-[#f9fbf8] p-4"><a href={`/dashboard?userId=${user.id}`} className="font-medium text-[#245b35] hover:underline">{user.name}</a><p className="mt-1 text-sm text-[#6a7669]">{user.email}</p><div className="mt-3 grid grid-cols-2 gap-3 text-sm text-[#4d5b4c]"><p><span className="font-medium text-[#172117]">Mobile:</span> {user.mobileNumber}</p><p><span className="font-medium text-[#172117]">Role:</span> {user.role}</p><p><span className="font-medium text-[#172117]">Days tracked:</span> {user.daysTracked}</p><p><span className="font-medium text-[#172117]">Tracking:</span> {Math.round(user.trackingRate)}%</p></div></article>)}
           </div>
@@ -2670,14 +2670,14 @@ function Admin({ data }: { data: DashboardData }) {
           </div>
         </section>
         <section className="min-w-0 rounded-lg border border-[#dbe5d8] bg-white">
-          <div className="flex items-center justify-between border-b border-[#e4ece1] p-4"><div><h2 className="font-semibold">Cross-user comparison</h2><p className="text-sm text-[#6a7669]">Compare intake, tracking, and latest medical values.</p></div><button onClick={() => downloadCsv("LCHF-admin-comparison.csv", [["Name", "Email", "Mobile", "Role", "Total Logs", "Days Tracked", "Tracking %", "Avg Calories/Log", "Avg Carbs/Log", "Avg Proteins/Log", "Avg Fats/Log", "Latest BMI", "Latest BP Low", "Latest BP High", "Latest Medical Date"], ...filteredComparisonRows.map((row) => [row.name, row.email, row.mobileNumber, row.role, row.totalLogs, row.daysTracked, Math.round(row.trackingRate), row.avgCaloriesPerLog, row.avgCarbsPerLog, row.avgProteinsPerLog, row.avgFatsPerLog, row.latestBmi, row.latestBpLow, row.latestBpHigh, row.latestMedicalDate])])} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]"><Download className="size-4" /></button></div>
+          <div className="flex items-center justify-between border-b border-[#e4ece1] p-4"><div><h2 className="font-semibold">Cross-User Comparison</h2><p className="text-sm text-[#6a7669]">Compare intake, tracking, and latest medical values.</p></div><button onClick={() => downloadCsv("LCHF-admin-comparison.csv", [["Name", "Email", "Mobile", "Role", "Total Logs", "Days Tracked", "Tracking %", "Avg Calories/Log", "Avg Carbs/Log", "Avg Proteins/Log", "Avg Fats/Log", "Latest BMI", "Latest BP Low", "Latest BP High", "Latest Medical Date"], ...filteredComparisonRows.map((row) => [row.name, row.email, row.mobileNumber, row.role, row.totalLogs, row.daysTracked, Math.round(row.trackingRate), row.avgCaloriesPerLog, row.avgCarbsPerLog, row.avgProteinsPerLog, row.avgFatsPerLog, row.latestBmi, row.latestBpLow, row.latestBpHigh, row.latestMedicalDate])])} className="rounded-md border border-[#d8e2d5] p-2 hover:bg-[#f4f7f2]"><Download className="size-4" /></button></div>
           <div className="px-4 pb-4"><TableControls searchValue={comparisonSearch} onSearchChange={setComparisonSearch} searchPlaceholder="Search user, email, or mobile" filterValue={comparisonRoleFilter} onFilterChange={(value) => setComparisonRoleFilter(value as "all" | Role)} filterOptions={[{ value: "all", label: "All roles" }, { value: "USER", label: "Users" }, { value: "ADMIN", label: "Admins" }]} sortValue={comparisonSort} onSortChange={(value) => setComparisonSort(value as "tracking_desc" | "logs_desc" | "calories_desc" | "name_asc")} sortOptions={[{ value: "tracking_desc", label: "Tracking High to Low" }, { value: "logs_desc", label: "Logs High to Low" }, { value: "calories_desc", label: "Avg kcal High to Low" }, { value: "name_asc", label: "Name A to Z" }]} /></div>
           <div className="space-y-3 px-4 pb-4 lg:hidden">
-            {filteredComparisonRows.length === 0 ? <p className="rounded-lg border border-dashed border-[#d8e2d5] bg-[#f9fbf8] p-4 text-center text-sm text-[#6a7669]">No comparison rows found.</p> : filteredComparisonRows.map((row) => <article key={row.userId} className="rounded-lg border border-[#e4ece1] bg-[#f9fbf8] p-4"><a href={`/dashboard?userId=${row.userId}`} className="font-medium text-[#245b35] hover:underline">{row.name}</a><p className="mt-1 text-sm text-[#6a7669]">{row.email}</p><div className="mt-3 grid grid-cols-2 gap-3 text-sm text-[#4d5b4c]"><p><span className="font-medium text-[#172117]">Logs:</span> {row.totalLogs}</p><p><span className="font-medium text-[#172117]">Tracked days:</span> {row.daysTracked}</p><p><span className="font-medium text-[#172117]">Tracking:</span> {Math.round(row.trackingRate)}%</p><p><span className="font-medium text-[#172117]">Avg kcal:</span> {round(row.avgCaloriesPerLog, 0)}</p><p><span className="font-medium text-[#172117]">Avg carbs:</span> {round(row.avgCarbsPerLog)}g</p><p><span className="font-medium text-[#172117]">Avg proteins:</span> {round(row.avgProteinsPerLog)}g</p><p><span className="font-medium text-[#172117]">Avg fats:</span> {round(row.avgFatsPerLog)}g</p><p><span className="font-medium text-[#172117]">Latest BMI:</span> {row.latestBmi === null ? "-" : round(row.latestBmi)}</p></div><p className="mt-3 text-sm text-[#4d5b4c]"><span className="font-medium text-[#172117]">Latest BP:</span> {row.latestBpHigh && row.latestBpLow ? `${round(row.latestBpHigh, 0)}/${round(row.latestBpLow, 0)}` : "-"}</p></article>)}
+            {filteredComparisonRows.length === 0 ? <p className="rounded-lg border border-dashed border-[#d8e2d5] bg-[#f9fbf8] p-4 text-center text-sm text-[#6a7669]">No comparison rows found.</p> : filteredComparisonRows.map((row) => <article key={row.userId} className="rounded-lg border border-[#e4ece1] bg-[#f9fbf8] p-4"><a href={`/dashboard?userId=${row.userId}`} className="font-medium text-[#245b35] hover:underline">{row.name}</a><p className="mt-1 text-sm text-[#6a7669]">{row.email}</p><div className="mt-3 grid grid-cols-2 gap-3 text-sm text-[#4d5b4c]"><p><span className="font-medium text-[#172117]">Logs:</span> {row.totalLogs}</p><p><span className="font-medium text-[#172117]">Tracked Days:</span> {row.daysTracked}</p><p><span className="font-medium text-[#172117]">Tracking:</span> {Math.round(row.trackingRate)}%</p><p><span className="font-medium text-[#172117]">Avg kcal:</span> {round(row.avgCaloriesPerLog, 0)}</p><p><span className="font-medium text-[#172117]">Avg Carbs:</span> {round(row.avgCarbsPerLog)}g</p><p><span className="font-medium text-[#172117]">Avg Proteins:</span> {round(row.avgProteinsPerLog)}g</p><p><span className="font-medium text-[#172117]">Avg Fats:</span> {round(row.avgFatsPerLog)}g</p><p><span className="font-medium text-[#172117]">Latest BMI:</span> {row.latestBmi === null ? "-" : round(row.latestBmi)}</p></div><p className="mt-3 text-sm text-[#4d5b4c]"><span className="font-medium text-[#172117]">Latest BP:</span> {row.latestBpHigh && row.latestBpLow ? `${round(row.latestBpHigh, 0)}/${round(row.latestBpLow, 0)}` : "-"}</p></article>)}
           </div>
           <div className="hidden overflow-x-auto lg:block">
             <table className="w-full min-w-[1080px] text-sm">
-              <thead className="bg-[#f4f8f2] text-left"><tr><th className="p-3">User</th><th className="p-3">Logs</th><th className="p-3">Tracked days</th><th className="p-3">Tracking %</th><th className="p-3">Avg kcal</th><th className="p-3">Avg carbs</th><th className="p-3">Avg proteins</th><th className="p-3">Avg fats</th><th className="p-3">Latest BMI</th><th className="p-3">Latest BP</th></tr></thead>
+              <thead className="bg-[#f4f8f2] text-left"><tr><th className="p-3">User</th><th className="p-3">Logs</th><th className="p-3">Tracked Days</th><th className="p-3">Tracking %</th><th className="p-3">Avg kcal</th><th className="p-3">Avg carbs</th><th className="p-3">Avg proteins</th><th className="p-3">Avg fats</th><th className="p-3">Latest BMI</th><th className="p-3">Latest BP</th></tr></thead>
               <tbody>{filteredComparisonRows.length === 0 ? <tr><td colSpan={10} className="p-4 text-center text-[#6a7669]">No comparison rows found.</td></tr> : filteredComparisonRows.map((row) => <tr key={row.userId} className="border-t border-[#eef3ec]"><td className="p-3"><a href={`/dashboard?userId=${row.userId}`} className="font-medium text-[#245b35] hover:underline">{row.name}</a><p className="text-xs text-[#6a7669]">{row.email}</p></td><td className="p-3">{row.totalLogs}</td><td className="p-3">{row.daysTracked}</td><td className="p-3">{Math.round(row.trackingRate)}%</td><td className="p-3">{round(row.avgCaloriesPerLog, 0)}</td><td className="p-3">{round(row.avgCarbsPerLog)}g</td><td className="p-3">{round(row.avgProteinsPerLog)}g</td><td className="p-3">{round(row.avgFatsPerLog)}g</td><td className="p-3">{row.latestBmi === null ? "-" : round(row.latestBmi)}</td><td className="p-3">{row.latestBpHigh && row.latestBpLow ? `${round(row.latestBpHigh, 0)}/${round(row.latestBpLow, 0)}` : "-"}</td></tr>)}</tbody>
             </table>
           </div>

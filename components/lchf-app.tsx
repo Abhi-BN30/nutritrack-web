@@ -91,7 +91,7 @@ type FoodItem = {
   fibre: number | null;
 };
 
-type PersonalFoodItem = FoodItem & {
+type PersonalFoodItem = Omit<FoodItem, "fibre"> & {
   ownerEmail: string;
 };
 
